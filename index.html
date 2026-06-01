@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprite Animator</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- TITLEBAR -->
+<div id="titlebar">
+  <span class="logo">◈ SPRITE ANIMATOR</span>
+  <span class="tfile" id="tfile">sans titre</span>
+  <span class="tsp"></span>
+  <button class="tbtn" id="btn-undo" onclick="App.undo()" disabled>↩ Undo</button>
+  <button class="tbtn" onclick="App.openImage()">📂 Ouvrir</button>
+  <button class="tbtn" onclick="App.saveProject()">💾 Sauvegarder</button>
+  <button class="tbtn" onclick="App.loadProject()">📁 Charger</button>
+  <button class="tbtn warn" onclick="App.exportGif()" id="btn-gif" disabled>🎞 GIF</button>
+  <button class="tbtn" onclick="App.exportFrames()" id="btn-frames" disabled>🖼 Frames</button>
+  <button class="tbtn" onclick="App.exportJSON()" id="btn-json" disabled>📄 JSON</button>
+  <button class="tbtn" onclick="App.toggleFullscreen()">⛶ Preview</button>
+</div>
+
+<!-- UNDO BAR -->
+<div id="undo-bar">
+  ↩ <span id="undo-desc">action annulée</span>
+  <span class="tsp"></span>
+  <span style="opacity:.6;font-size:10px">Ctrl+Z / Cmd+Z</span>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- LEFT PANEL -->
+  <div id="panel-left">
+    <div class="psec">
+      <h3>Découpage
+        <span class="badge" id="detect-badge" style="display:none" onclick="App.autoDetect()">✦ Auto</span>
+      </h3>
+      <label>Colonnes</label>
+      <input type="number" id="cols" value="4" min="1" max="128" oninput="App.updateGrid()">
+      <label>Lignes</label>
+      <input type="number" id="rows" value="4" min="1" max="128" oninput="App.updateGrid()">
+      <label>Décalage global X</label>
+      <input type="number" id="offx" value="0" min="0" oninput="App.updateGrid()">
+      <label>Décalage global Y</label>
+      <input type="number" id="offy" value="0" min="0" oninput="App.updateGrid()">
+      <label>Espacement X</label>
+      <input type="number" id="padx" value="0" min="0" oninput="App.updateGrid()">
+      <label>Espacement Y</label>
+      <input type="number" id="pady" value="0" min="0" oninput="App.updateGrid()">
+    </div>
+
+    <div class="psec">
+      <h3>Taille de frame</h3>
+      <div class="crow">
+        <input type="checkbox" id="custom-size" onchange="App.toggleCustomSize()">
+        <span>Taille personnalisée</span>
+      </div>
+      <label>Largeur (px)</label>
+      <input type="number" id="fw" value="0" min="1" disabled oninput="App.updateCustomSize()">
+      <label>Hauteur (px)</label>
+      <input type="number" id="fh" value="0" min="1" disabled oninput="App.updateCustomSize()">
+      <label>Zoom preview</label>
+      <div class="rrow">
+        <input type="range" id="zoom" min="0.5" max="12" step="0.5" value="3" oninput="App.updateZoom()">
+        <span id="zvl">3×</span>
+      </div>
+    </div>
+
+    <div class="psec">
+      <h3>Affichage</h3>
+      <label>Fond</label>
+      <select id="bg-mode" onchange="App.updateBg()">
+        <option value="checker" selected>Damier (transparence)</option>
+        <option value="color">Couleur unie</option>
+      </select>
+      <input type="color" id="bgc" value="#ffffff" oninput="App.updateBg()">
+      <div class="crow">
+        <input type="checkbox" id="sgrid" onchange="App.drawGrid()">
+        <span>Grille de pixels</span>
+      </div>
+      <div class="crow">
+        <input type="checkbox" id="sonion" onchange="App.updateOnion()">
+        <span>Onion skin</span>
+      </div>
+      <div class="rrow" style="margin-top:6px">
+        <input type="range" id="oop" min="5" max="70" value="25" oninput="App.updateOnion()">
+        <span id="oopv">25%</span>
+      </div>
+    </div>
+
+    <div class="psec" style="border-bottom:none;padding-bottom:4px">
+      <h3>Animations</h3>
+      <button class="btn primary" onclick="App.addAnim()">+ Nouvelle animation</button>
+    </div>
+    <div id="anim-list"></div>
+  </div>
+
+  <!-- CENTER -->
+  <div id="center">
+
+    <!-- Playbar -->
+    <div id="playbar">
+      <button class="sbtn" onclick="App.prevFrame()">◀</button>
+      <button class="pbtn" id="playbtn" onclick="App.togglePlay()">▶</button>
+      <button class="sbtn" onclick="App.nextFrame()">▶</button>
+      <span id="fcnt">0 / 0</span>
+      <div class="psep"></div>
+      <div class="fps-group">
+        <label>FPS</label>
+        <input type="range" id="fps" min="1" max="60" value="12" oninput="App.setFps()">
+        <span id="fpsv">12 fps</span>
+      </div>
+      <div class="psep"></div>
+      <button class="lbtn on" id="lbtn" onclick="App.toggleLoop()">⟳ LOOP</button>
+      <button class="modebtn" id="cmparebtn" onclick="App.toggleCompare()">⊞ COMPARE</button>
+      <span class="tsp"></span>
+    </div>
+
+    <!-- TOOL BAR -->
+    <div id="toolbar">
+      <span class="tb-label">OUTILS</span>
+      <div class="tb-sep"></div>
+
+      <!-- View/move tool -->
+      <button class="tool-btn" id="tool-none" onclick="Placement.setTool('none')" title="Sélection (par défaut)">↖ Select</button>
+      <button class="tool-btn" id="tool-pan"  onclick="Placement.setTool('pan')"  title="Déplacer la preview (drag)">✥ Pan</button>
+      <button class="tool-btn" id="tool-source" onclick="Placement.setTool('source')" title="Déplacer le crop source (drag)">⊹ Source</button>
+
+      <div class="tb-sep"></div>
+
+      <!-- Pan numeric fields -->
+      <span class="tb-label">Pan</span>
+      <div class="tb-field">
+        <span>X</span>
+        <input type="number" id="pan-x" value="0" onchange="Placement.applyPanFields()" title="Décalage preview X">
+      </div>
+      <div class="tb-field">
+        <span>Y</span>
+        <input type="number" id="pan-y" value="0" onchange="Placement.applyPanFields()" title="Décalage preview Y">
+      </div>
+      <button class="tb-btn" onclick="Placement.resetPan()" title="Centrer la preview">⌖ Reset</button>
+
+      <div class="tb-sep"></div>
+
+      <!-- Snap -->
+      <button class="tool-btn" id="snap-btn" onclick="Placement.toggleSnap()" title="Grille magnétique">⊹ SNAP</button>
+      <div class="tb-field">
+        <span>px</span>
+        <input type="number" id="snap-size" value="8" min="1" max="64" onchange="Placement.setSnapSize(this.value)" title="Taille de la grille snap">
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <!-- Sheet viewer -->
+      <button class="tb-btn accent" onclick="Placement.openSheetViewer()" id="btn-sheet" disabled title="Voir et éditer le sprite sheet complet">🗺 Sheet Viewer</button>
+
+      <div class="tb-sep"></div>
+      <button class="tool-btn" id="rulers-btn" onclick="Rulers.toggle()" title="Rulers (R)">📐 Rulers</button>
+      <button class="tb-btn" onclick="Rulers.clearGuides()" title="Effacer les guides">✕ Guides</button>
+    </div>
+
+    <!-- Canvas area -->
+    <div id="canvas-outer">
+      <!-- Ruler wrap: corner + h-ruler + v-ruler + canvas -->
+      <div id="ruler-wrap" style="display:none">
+        <!-- corner -->
+        <div id="ruler-corner-cell"></div>
+        <!-- horizontal ruler -->
+        <div id="ruler-h-cell"></div>
+        <!-- vertical ruler -->
+        <div id="ruler-v-cell"></div>
+        <!-- canvas slot (ruler fills this cell too) -->
+        <div id="ruler-canvas-cell"></div>
+      </div>
+
+      <div id="canvas-wrap">
+        <div id="dropzone">
+          <div class="drop-icon">🎮</div>
+          <p>Ouvre un sprite sheet pour commencer</p>
+          <small>PNG · JPG · GIF · WEBP — ou glisse ici</small>
+          <button class="btn primary" style="width:auto;margin-top:12px" onclick="App.openImage()">📂 Ouvrir</button>
+        </div>
+        <div class="cv-slot" id="slot-a">
+          <div class="slot-label" id="label-a" style="display:none">A</div>
+          <div class="c-bg" id="cbg" style="display:none"></div>
+          <canvas class="c-onion" id="c-onion" style="display:none"></canvas>
+          <canvas class="c-preview" id="c-preview" style="display:none"></canvas>
+          <canvas class="c-grid"   id="c-grid"   style="display:none"></canvas>
+        </div>
+        <div class="cv-slot" id="slot-b" style="display:none">
+          <div class="slot-label">B</div>
+          <div class="c-bg" id="cbg-b"></div>
+          <canvas class="c-preview" id="c-preview-b"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Strip / Timeline -->
+    <div id="strip-wrap">
+      <div id="strip-tabs">
+        <div class="strip-tab active" onclick="App.switchStrip('frames')">Frames</div>
+        <div class="strip-tab" onclick="App.switchStrip('timeline')">Timeline</div>
+      </div>
+      <div id="strip"></div>
+      <div id="timeline" style="display:none"></div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="panel-right">
+
+    <div class="psec">
+      <h3>Animation active</h3>
+      <label>Nom</label>
+      <input type="text" id="aname" placeholder="idle, walk, run…" oninput="App.renameAnim()">
+      <label>Frame début</label>
+      <input type="number" id="astart" value="0" min="0" onchange="App.updateRange()">
+      <label>Frame fin</label>
+      <input type="number" id="aend" value="3" min="0" onchange="App.updateRange()">
+      <div class="crow"><input type="checkbox" id="arev" onchange="App.updateRange()"><span>Lecture inversée</span></div>
+      <div class="crow"><input type="checkbox" id="appc" onchange="App.updateRange()"><span>Ping-pong</span></div>
+    </div>
+
+    <div class="psec">
+      <h3>Décalage par frame
+        <span id="fo-badge" style="font-size:9px;color:var(--orange);font-weight:normal"></span>
+      </h3>
+      <p class="hint">Frame : <span id="fo-frame" style="color:var(--accent);font-family:'IBM Plex Mono',monospace">—</span></p>
+      <div class="grid-2">
+        <div><label>Offset X</label><input type="number" id="fo-x" value="0" onchange="App.setFrameOffset('x')"></div>
+        <div><label>Offset Y</label><input type="number" id="fo-y" value="0" onchange="App.setFrameOffset('y')"></div>
+        <div><label>Crop W</label><input type="number" id="fo-w" value="" placeholder="auto" onchange="App.setFrameOffset('w')"></div>
+        <div><label>Crop H</label><input type="number" id="fo-h" value="" placeholder="auto" onchange="App.setFrameOffset('h')"></div>
+      </div>
+      <div class="fo-indicator" id="fo-indicator"></div>
+      <div class="btn-row">
+        <button class="btn" onclick="App.resetFrameOffset()">Reset frame</button>
+        <button class="btn" onclick="App.resetAllOffsets()">Reset tout</button>
+      </div>
+    </div>
+
+    <div class="psec">
+      <h3>Sprite Sheet</h3>
+      <div class="irow"><span>Image</span><span id="isize">—</span></div>
+      <div class="irow"><span>Frame size</span><span id="iframe">—</span></div>
+      <div class="irow"><span>Total frames</span><span id="itotal">—</span></div>
+      <div class="irow"><span>Frames animées</span><span id="ianim">—</span></div>
+      <div class="irow"><span>Offsets custom</span><span id="ioffsets">0</span></div>
+    </div>
+
+    <!-- ── ASSETS / LAYERS ── -->
+    <div class="psec">
+      <h3>Assets & Calques</h3>
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn" onclick="document.getElementById('asset-input-over').click()" style="font-size:10px">▲ Dessus</button>
+        <button class="btn" onclick="document.getElementById('asset-input-under').click()" style="font-size:10px">▼ Dessous</button>
+      </div>
+      <div id="layer-list" style="margin-top:8px"></div>
+    </div>
+
+    <!-- Asset props panel -->
+    <div class="psec" id="asset-props" style="display:none">
+      <h3>Propriétés calque</h3>
+      <label>Nom</label>
+      <input type="text" id="ap-name" oninput="Assets.setProp(Assets.selectedLayer,'name',this.value,false);Assets.renderLayerList()">
+
+      <!-- Drag handle -->
+      <div id="ap-drag-handle" style="margin-top:8px;padding:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:4px;cursor:move;text-align:center;font-size:10px;color:var(--text2);transition:border-color .15s"
+           onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
+        ✥ Glisser pour repositionner
+      </div>
+
+      <div class="grid-2" style="margin-top:6px">
+        <div>
+          <label>X</label>
+          <input type="number" id="ap-x" onchange="Assets.setProp(Assets.selectedLayer,'x',+this.value,document.getElementById('ap-per-frame').checked)">
+        </div>
+        <div>
+          <label>Y</label>
+          <input type="number" id="ap-y" onchange="Assets.setProp(Assets.selectedLayer,'y',+this.value,document.getElementById('ap-per-frame').checked)">
+        </div>
+      </div>
+
+      <label>Échelle</label>
+      <div class="rrow">
+        <input type="range" id="ap-scale" min="0.1" max="4" step="0.05" value="1"
+               oninput="document.getElementById('ap-scale-v').textContent=Math.round(this.value*100)+'%';Assets.setProp(Assets.selectedLayer,'scale',+this.value,document.getElementById('ap-per-frame').checked)">
+        <span id="ap-scale-v">100%</span>
+      </div>
+
+      <label>Opacité</label>
+      <div class="rrow">
+        <input type="range" id="ap-opacity" min="0" max="100" value="100"
+               oninput="document.getElementById('ap-opacity-v').textContent=this.value+'%';Assets.setProp(Assets.selectedLayer,'opacity',this.value/100,document.getElementById('ap-per-frame').checked)">
+        <span id="ap-opacity-v">100%</span>
+      </div>
+
+      <label>Position</label>
+      <select id="ap-zindex" onchange="Assets.setProp(Assets.selectedLayer,'zIndex',this.value==='over'?1:-1,false);Assets.renderLayerList()">
+        <option value="over">▲ Au-dessus du sprite</option>
+        <option value="under">▼ En dessous du sprite</option>
+      </select>
+
+      <div class="crow" style="margin-top:8px">
+        <input type="checkbox" id="ap-per-frame">
+        <span>Modifier cette frame uniquement</span>
+      </div>
+
+      <div style="font-size:10px;color:var(--orange);font-family:'IBM Plex Mono',monospace;margin-top:4px;min-height:14px" id="ap-override"></div>
+      <button class="btn" id="ap-clear-override" onclick="Assets.clearFrameOverride(Assets.selectedLayer)" style="display:none;font-size:10px;color:var(--orange);border-color:var(--orange)">
+        ✕ Supprimer override frame
+      </button>
+    </div>
+
+    <div class="psec" id="compare-sec" style="display:none">
+      <h3>Comparer avec</h3>
+      <label>Animation B</label>
+      <select id="compare-anim" onchange="App.updateCompare()">
+        <option value="-1">Toutes les frames</option>
+      </select>
+    </div>
+
+    <div class="psec">
+      <h3>Export GIF</h3>
+      <label>Échelle</label>
+      <div class="rrow">
+        <input type="range" id="gscale" min="0.5" max="4" step="0.5" value="2" oninput="App.setGifScale()">
+        <span id="gscalev">2×</span>
+      </div>
+      <label>Qualité dither</label>
+      <div class="rrow">
+        <input type="range" id="gqual" min="1" max="20" value="10" oninput="this.nextElementSibling.textContent=this.value">
+        <span>10</span>
+      </div>
+      <button class="btn success" id="expbtn" onclick="App.exportGif()" disabled>🎞 Exporter en GIF</button>
+      <div id="gif-progress" style="display:none">
+        <progress id="gif-bar" value="0" max="100"></progress>
+        <span id="gif-txt">Génération…</span>
+      </div>
+    </div>
+
+    <div class="psec">
+      <h3>Export Frames PNG</h3>
+      <label>Préfixe</label>
+      <input type="text" id="export-prefix" value="frame">
+      <label>Échelle</label>
+      <div class="rrow">
+        <input type="range" id="escale" min="1" max="4" step="1" value="1" oninput="this.nextElementSibling.textContent=this.value+'×'">
+        <span>1×</span>
+      </div>
+      <button class="btn" id="expframes" onclick="App.exportFrames()" disabled>🖼 Exporter frames PNG</button>
+    </div>
+
+    <div class="psec">
+      <h3>Export JSON</h3>
+      <div class="crow"><input type="checkbox" id="json-phaser" checked><span>Format Phaser 3</span></div>
+      <div class="crow"><input type="checkbox" id="json-pixijs"><span>Format PixiJS</span></div>
+      <button class="btn" id="expjson" onclick="App.exportJSON()" disabled>📄 Exporter JSON</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <span id="smsg">Prêt — ouvre un sprite sheet pour commencer</span>
+  <span>·</span>
+  <span id="sframe">frame: —</span>
+  <span>·</span>
+  <span id="ruler-pos" style="color:var(--accent);font-family:'IBM Plex Mono',monospace">x:— y:—</span>
+  <span>·</span>
+  <span id="sheet-coords" style="color:var(--text2)"></span>
+</div>
+
+<!-- SHEET VIEWER OVERLAY -->
+<div id="sheet-overlay" class="hidden">
+  <div id="sheet-viewer">
+    <div id="sheet-header">
+      <span class="logo" style="font-size:12px">🗺 SHEET VIEWER</span>
+      <span id="sheet-info-txt" style="font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace"></span>
+      <span class="tsp"></span>
+      <span style="font-size:10px;color:var(--text2);margin-right:8px">Drag = déplacer frame · Alt+Drag = pan · Molette = zoom · Dbl-clic = reset offset</span>
+      <button class="tbtn" onclick="Placement.closeSheetViewer()">✕ Fermer</button>
+    </div>
+    <canvas id="sheet-canvas"></canvas>
+    <div id="sheet-footer">
+      <span id="sheet-coords-detail" style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text2)"></span>
+      <span class="tsp"></span>
+      <button class="tb-btn" onclick="Placement.toggleSnap()" id="snap-btn-sheet" style="font-size:10px">⊹ SNAP</button>
+      <div class="tb-field" style="margin-left:6px">
+        <span style="font-size:10px;color:var(--text2)">px</span>
+        <input type="number" id="snap-size-sheet" value="8" min="1" max="64" style="width:44px;font-size:11px" onchange="Placement.setSnapSize(this.value)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL new anim -->
+<div id="modal-overlay" class="hidden">
+  <div class="modal">
+    <h2>Nouvelle animation</h2>
+    <p>Définissez le nom et la plage de frames.</p>
+    <label>Nom</label>
+    <input type="text" id="mname" placeholder="idle, walk, run…">
+    <label style="margin-top:10px">Frame début</label>
+    <input type="number" id="mstart" value="0" min="0">
+    <label style="margin-top:8px">Frame fin</label>
+    <input type="number" id="mend" value="3" min="0">
+    <div class="modal-btns">
+      <button class="btn" onclick="App.closeModal()">Annuler</button>
+      <button class="btn primary" onclick="App.confirmAnim()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULLSCREEN -->
+<div id="fs-overlay">
+  <canvas id="fs-canvas"></canvas>
+  <button id="fs-close" onclick="App.closeFullscreen()">✕ Fermer (Échap)</button>
+</div>
+
+<input type="file" id="file-input" accept="image/*" style="display:none" onchange="App.handleFileInput(event)">
+<input type="file" id="asset-input-over"   accept="image/*" style="display:none" onchange="App.handleAssetInput(event,true)">
+<input type="file" id="asset-input-under" accept="image/*" style="display:none" onchange="App.handleAssetInput(event,false)">
+<input type="file" id="project-input" accept=".spanim" style="display:none" onchange="App.handleProjectInput(event)">
+<canvas id="detect-canvas" style="display:none"></canvas>
+<div id="toast"></div>
+
+<script src="js/gifjs.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/animations.js"></script>
+<script src="js/export.js"></script>
+<script src="js/placement.js"></script>
+<script src="js/rulers.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
