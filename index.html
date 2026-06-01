@@ -214,12 +214,9 @@
           <canvas class="c-onion" id="c-onion" style="display:none"></canvas>
           <canvas class="c-preview" id="c-preview" style="display:none"></canvas>
           <canvas class="c-grid"   id="c-grid"   style="display:none"></canvas>
+          <canvas id="c-overlay" style="position:absolute;inset:0;pointer-events:none;z-index:12"></canvas>
         </div>
-        <div class="cv-slot" id="slot-b" style="display:none">
-          <div class="slot-label">B</div>
-          <div class="c-bg" id="cbg-b"></div>
-          <canvas class="c-preview" id="c-preview-b"></canvas>
-        </div>
+
       </div>
     </div>
 
@@ -277,6 +274,7 @@
       <div class="btn-row">
         <button class="btn" onclick="App.resetFrameOffset()">Reset frame</button>
         <button class="btn" onclick="App.resetAllOffsets()">Reset tout</button>
+      </div>
       </div>
     </div>
 

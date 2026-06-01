@@ -498,19 +498,38 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
 .modebtn.on { border-color: var(--orange); color: var(--orange); background: rgba(252,176,92,.08); }
 
 /* ── CANVAS AREA ── */
-#canvas-wrap {
+/* canvas-outer fills remaining space in #center flex column */
+#canvas-outer {
   flex: 1;
   position: relative;
   overflow: hidden;
+  min-height: 0;
+}
+
+#canvas-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   background: var(--bg);
 }
+
+#dropzone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 5;
+}
+#dropzone.hidden { display: none; }
 
 .cv-slot {
   position: absolute;
   inset: 0;
   overflow: hidden;
 }
-.cv-slot + .cv-slot { border-left: 1px solid var(--border); }
 
 .slot-label {
   position: absolute;
@@ -550,21 +569,10 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
   background-color: #fff;
 }
 
-/* Drop zone */
-#dropzone {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  z-index: 5;
-}
+/* Drop zone styles */
 #dropzone .drop-icon { font-size: 48px; opacity: .3; }
 #dropzone p          { font-size: 14px; color: var(--text2); text-align: center; }
 #dropzone small      { font-size: 11px; color: var(--text2); opacity: .5; font-family: var(--font-mono); }
-#dropzone.hidden     { display: none; }
 
 /* ── STRIP / TIMELINE ── */
 #strip-wrap {
@@ -980,15 +988,7 @@ body.drag-over #canvas-wrap::after {
    RULERS
 ══════════════════════════════════════ */
 
-#canvas-outer {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-}
+
 
 /* When rulers are ON, canvas-outer becomes a grid */
 #canvas-outer.rulers-on {
