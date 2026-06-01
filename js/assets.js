@@ -39,23 +39,26 @@ const Assets = (() => {
   function addLayer(dataUrl, name) {
     const img = new Image();
     img.onload = () => {
+      const fi = state.getCurrentFrameIndex ? state.getCurrentFrameIndex() : 0;
+      const frameEnabled = {};
+      frameEnabled[fi] = true; // active only on current frame by default
       const layer = {
         id: nextId++, type: 'asset',
         name: name || ('asset_' + nextId),
         img, dataUrl,
         x: 0, y: 0, scale: 1, scaleX: 1, scaleY: 1,
         opacity: 1, visible: true, blendMode: 'source-over',
-        mode: 'global', frameEnabled: {},
+        mode: 'frame',       // ← frame mode by default
+        frameEnabled,
         order: layers.length
       };
-      // Insert above sprite by default
       layers.unshift(layer);
       recomputeOrder();
       selectedId = layer.id;
       renderLayerList();
       syncPropsPanel();
       Renderer.render();
-      App.toast('Calque ajouté : ' + layer.name, 'ok');
+      App.toast(`Calque ajouté sur frame #${fi}`, 'ok');
     };
     img.src = dataUrl;
   }
@@ -267,6 +270,75 @@ const Assets = (() => {
   }
 
   // ── UI ──
+  // ── FRAME GRID: visual per-frame toggle for 'frame' mode layers ──
+  function renderFrameGrid(layer) {
+    const container = document.getElementById('ap-frame-grid');
+    if (!container || !state.img) return;
+    container.innerHTML = '';
+    const total = state.totalF || 0;
+    const fi    = state.getCurrentFrameIndex ? state.getCurrentFrameIndex() : 0;
+
+    // Title with count
+    const activeCount = Object.values(layer.frameEnabled).filter(Boolean).length;
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:10px;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center';
+    title.innerHTML = `<span>Frames actives</span><span style="color:var(--accent);font-family:'IBM Plex Mono',monospace">${activeCount} / ${total}</span>`;
+    container.appendChild(title);
+
+    // Quick actions
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:4px;margin-bottom:8px';
+    const btnAll = document.createElement('button');
+    btnAll.className = 'btn'; btnAll.style.cssText = 'flex:1;font-size:9px;margin:0;padding:4px';
+    btnAll.textContent = 'Tout activer';
+    btnAll.onclick = () => {
+      for (let i = 0; i < total; i++) layer.frameEnabled[i] = true;
+      renderLayerList(); renderFrameGrid(layer); Renderer.render();
+    };
+    const btnNone = document.createElement('button');
+    btnNone.className = 'btn'; btnNone.style.cssText = 'flex:1;font-size:9px;margin:0;padding:4px';
+    btnNone.textContent = 'Tout désactiver';
+    btnNone.onclick = () => {
+      layer.frameEnabled = {};
+      renderLayerList(); renderFrameGrid(layer); Renderer.render();
+    };
+    const btnCopy = document.createElement('button');
+    btnCopy.className = 'btn'; btnCopy.style.cssText = 'flex:1;font-size:9px;margin:0;padding:4px';
+    btnCopy.textContent = 'Copier props →';
+    btnCopy.title = 'Copier les propriétés de la frame courante sur toutes les frames actives';
+    btnCopy.onclick = () => copyFrameToAll(layer.id);
+    actions.appendChild(btnAll);
+    actions.appendChild(btnNone);
+    actions.appendChild(btnCopy);
+    container.appendChild(actions);
+
+    // Frame grid
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:3px;max-height:120px;overflow-y:auto';
+    for (let i = 0; i < total; i++) {
+      const active  = !!layer.frameEnabled[i];
+      const isCur   = i === fi;
+      const cell    = document.createElement('div');
+      cell.style.cssText = `
+        width:100%;aspect-ratio:1;border-radius:4px;cursor:pointer;
+        border:2px solid ${isCur ? 'var(--accent2)' : active ? 'var(--green)' : 'var(--border)'};
+        background:${active ? 'rgba(92,252,154,.15)' : 'var(--bg3)'};
+        display:flex;align-items:center;justify-content:center;
+        font-size:9px;font-family:'IBM Plex Mono',monospace;
+        color:${active ? 'var(--green)' : 'var(--text2)'};
+        transition:all .12s;position:relative;
+      `;
+      cell.textContent = i;
+      cell.title = `Frame ${i} — ${active ? 'actif' : 'inactif'} (clic pour toggle)`;
+      cell.onclick = () => {
+        layer.frameEnabled[i] = !layer.frameEnabled[i];
+        renderLayerList(); renderFrameGrid(layer); Renderer.render();
+      };
+      grid.appendChild(cell);
+    }
+    container.appendChild(grid);
+  }
+
   function renderLayerList() {
     const list = document.getElementById('layer-list');
     if (!list) return;
@@ -393,11 +465,7 @@ const Assets = (() => {
     // Frame mode indicator
     const fmRow = document.getElementById('ap-frame-mode-row');
     if (fmRow) fmRow.style.display = layer.mode === 'frame' ? 'block' : 'none';
-    if (layer.mode === 'frame') {
-      const activeFrames = Object.entries(layer.frameEnabled).filter(([,v])=>v).map(([k])=>+k);
-      document.getElementById('ap-frame-enabled').textContent =
-        activeFrames.length ? 'Frames actives : ' + activeFrames.join(', ') : 'Inactif sur toutes les frames';
-    }
+    if (layer.mode === 'frame') renderFrameGrid(layer);
 
     // Drag handle
     const dh = document.getElementById('ap-drag-handle');

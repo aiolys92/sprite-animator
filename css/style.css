@@ -1174,3 +1174,13 @@ body.drag-over #canvas-wrap::after {
 .exp-btn.exp-btn-primary:hover { opacity: .85; }
 .exp-btn:disabled { opacity: .35; cursor: not-allowed; }
 .exp-btn:disabled:hover { background: var(--bg3); border-color: var(--border); color: var(--text); }
+
+/* ── FRAME GRID ── */
+#ap-frame-grid {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 8px;
+}
+#ap-frame-grid > div:last-child::-webkit-scrollbar { width: 3px; }
+#ap-frame-grid > div:last-child::-webkit-scrollbar-thumb { background: var(--border); border-radius:2px; }
