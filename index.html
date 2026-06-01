@@ -295,65 +295,123 @@
     </div>
 
     <!-- ── ASSETS / LAYERS ── -->
-    <div class="psec">
-      <h3>Calques</h3>
-      <button class="btn primary" id="btn-add-layer" onclick="document.getElementById('asset-input-over').click()" style="margin-top:0" disabled>+ Ajouter un asset</button>
-      <div id="layer-list" style="margin-top:8px"></div>
+    <div class="psec" id="psec-layers">
+      <div class="psec-header" onclick="Panels.toggleSection('psec-layers')">
+        <h3>Calques</h3>
+        <span class="psec-chevron">▾</span>
+      </div>
+      <div class="psec-body">
+        <button class="btn primary" id="btn-add-layer" onclick="document.getElementById('asset-input-over').click()" style="margin-top:0" disabled>+ Ajouter un asset</button>
+        <div id="layer-list" style="margin-top:8px"></div>
       </div>
     </div>
 
     <!-- Asset props panel -->
     <div class="psec" id="asset-props" style="display:none">
-      <h3>Propriétés calque</h3>
-      <label>Nom</label>
-      <input type="text" id="ap-name" oninput="Assets.setProp(Assets.selectedLayer,'name',this.value,false);Assets.renderLayerList()">
-
-      <!-- Drag handle -->
-      <div id="ap-drag-handle" style="margin-top:8px;padding:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:4px;cursor:move;text-align:center;font-size:10px;color:var(--text2);transition:border-color .15s"
-           onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
-        ✥ Glisser pour repositionner
+      <div class="psec-header" onclick="Panels.toggleSection('asset-props')">
+        <h3>Propriétés calque</h3>
+        <span class="psec-chevron">▾</span>
       </div>
+      <div class="psec-body">
 
-      <div class="grid-2" style="margin-top:6px">
-        <div>
-          <label>X</label>
-          <input type="number" id="ap-x" onchange="Assets.setProp(Assets.selectedLayer,'x',+this.value,document.getElementById('ap-per-frame').checked)">
+        <label>Nom</label>
+        <input type="text" id="ap-name"
+          oninput="Assets.setProp(Assets.selectedId,'name',this.value,false);Assets.renderLayerList()">
+
+        <div id="ap-drag-handle"
+          style="margin-top:8px;padding:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:4px;cursor:move;text-align:center;font-size:10px;color:var(--text2)"
+          onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
+          ✥ Glisser pour déplacer
         </div>
-        <div>
-          <label>Y</label>
-          <input type="number" id="ap-y" onchange="Assets.setProp(Assets.selectedLayer,'y',+this.value,document.getElementById('ap-per-frame').checked)">
+
+        <div class="grid-2" style="margin-top:6px">
+          <div>
+            <label>X</label>
+            <input type="number" id="ap-x"
+              onchange="Assets.setProp(Assets.selectedId,'x',+this.value,document.getElementById('ap-per-frame').checked)">
+          </div>
+          <div>
+            <label>Y</label>
+            <input type="number" id="ap-y"
+              onchange="Assets.setProp(Assets.selectedId,'y',+this.value,document.getElementById('ap-per-frame').checked)">
+          </div>
         </div>
+
+        <label>Échelle</label>
+        <div class="rrow">
+          <input type="range" id="ap-scale" min="0.05" max="8" step="0.05" value="1"
+            oninput="document.getElementById('ap-scale-v').textContent=Math.round(this.value*100)+'%';Assets.setProp(Assets.selectedId,'scale',+this.value,document.getElementById('ap-per-frame').checked)">
+          <span id="ap-scale-v">100%</span>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Scale X</label>
+            <div class="rrow">
+              <input type="range" id="ap-scalex" min="0.05" max="4" step="0.05" value="1"
+                oninput="document.getElementById('ap-scalex-v').textContent=Math.round(this.value*100)+'%';Assets.setProp(Assets.selectedId,'scaleX',+this.value,document.getElementById('ap-per-frame').checked)">
+              <span id="ap-scalex-v" style="min-width:30px">100%</span>
+            </div>
+          </div>
+          <div>
+            <label>Scale Y</label>
+            <div class="rrow">
+              <input type="range" id="ap-scaley" min="0.05" max="4" step="0.05" value="1"
+                oninput="document.getElementById('ap-scaley-v').textContent=Math.round(this.value*100)+'%';Assets.setProp(Assets.selectedId,'scaleY',+this.value,document.getElementById('ap-per-frame').checked)">
+              <span id="ap-scaley-v" style="min-width:30px">100%</span>
+            </div>
+          </div>
+        </div>
+
+        <label>Opacité</label>
+        <div class="rrow">
+          <input type="range" id="ap-opacity" min="0" max="100" value="100"
+            oninput="document.getElementById('ap-opacity-v').textContent=this.value+'%';Assets.setProp(Assets.selectedId,'opacity',this.value/100,document.getElementById('ap-per-frame').checked)">
+          <span id="ap-opacity-v">100%</span>
+        </div>
+
+        <label>Blend mode</label>
+        <select id="ap-blend" onchange="Assets.setProp(Assets.selectedId,'blendMode',this.value,false)">
+          <option value="source-over">Normal</option>
+          <option value="multiply">Multiply</option>
+          <option value="screen">Screen</option>
+          <option value="overlay">Overlay</option>
+          <option value="darken">Darken</option>
+          <option value="lighten">Lighten</option>
+          <option value="color-dodge">Color Dodge</option>
+          <option value="color-burn">Color Burn</option>
+          <option value="hard-light">Hard Light</option>
+          <option value="soft-light">Soft Light</option>
+          <option value="difference">Difference</option>
+          <option value="exclusion">Exclusion</option>
+        </select>
+
+        <label>Visibilité</label>
+        <select id="ap-mode" onchange="Assets.setProp(Assets.selectedId,'mode',this.value,false);Assets.renderLayerList()">
+          <option value="global">🌐 Global (toutes les frames)</option>
+          <option value="frame">📌 Par frame</option>
+        </select>
+
+        <div id="ap-frame-mode-row" style="display:none;margin-top:8px">
+          <div id="ap-frame-grid"></div>
+        </div>
+
+        <div class="crow" style="margin-top:8px">
+          <input type="checkbox" id="ap-per-frame">
+          <span>Modifier cette frame uniquement</span>
+        </div>
+
+        <div style="font-size:10px;color:var(--orange);font-family:'IBM Plex Mono',monospace;margin-top:4px;min-height:14px" id="ap-override"></div>
+        <div class="btn-row">
+          <button class="btn" id="ap-clear-override"
+            onclick="Assets.clearFrameOverride(Assets.selectedId)"
+            style="display:none;font-size:10px">✕ Reset frame</button>
+          <button class="btn" id="ap-copy-all"
+            onclick="Assets.copyFrameToAll(Assets.selectedId)"
+            style="display:none;font-size:10px">⊕ Copier → tout</button>
+        </div>
+
       </div>
-
-      <label>Échelle</label>
-      <div class="rrow">
-        <input type="range" id="ap-scale" min="0.1" max="4" step="0.05" value="1"
-               oninput="document.getElementById('ap-scale-v').textContent=Math.round(this.value*100)+'%';Assets.setProp(Assets.selectedLayer,'scale',+this.value,document.getElementById('ap-per-frame').checked)">
-        <span id="ap-scale-v">100%</span>
-      </div>
-
-      <label>Opacité</label>
-      <div class="rrow">
-        <input type="range" id="ap-opacity" min="0" max="100" value="100"
-               oninput="document.getElementById('ap-opacity-v').textContent=this.value+'%';Assets.setProp(Assets.selectedLayer,'opacity',this.value/100,document.getElementById('ap-per-frame').checked)">
-        <span id="ap-opacity-v">100%</span>
-      </div>
-
-      <label>Position</label>
-      <select id="ap-zindex" onchange="Assets.setProp(Assets.selectedLayer,'zIndex',this.value==='over'?1:-1,false);Assets.renderLayerList()">
-        <option value="over">▲ Au-dessus du sprite</option>
-        <option value="under">▼ En dessous du sprite</option>
-      </select>
-
-      <div class="crow" style="margin-top:8px">
-        <input type="checkbox" id="ap-per-frame">
-        <span>Modifier cette frame uniquement</span>
-      </div>
-
-      <div style="font-size:10px;color:var(--orange);font-family:'IBM Plex Mono',monospace;margin-top:4px;min-height:14px" id="ap-override"></div>
-      <button class="btn" id="ap-clear-override" onclick="Assets.clearFrameOverride(Assets.selectedLayer)" style="display:none;font-size:10px;color:var(--orange);border-color:var(--orange)">
-        ✕ Supprimer override frame
-      </button>
     </div>
 
     <!-- hidden inputs kept for export logic -->
