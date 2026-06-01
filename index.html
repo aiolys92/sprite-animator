@@ -33,68 +33,95 @@
 
   <!-- LEFT PANEL -->
   <div id="panel-left">
-    <div class="psec">
-      <h3>Découpage
-        <span class="badge" id="detect-badge" style="display:none" onclick="App.autoDetect()">✦ Auto</span>
-      </h3>
-      <label>Colonnes</label>
-      <input type="number" id="cols" value="4" min="1" max="128" oninput="App.updateGrid()">
-      <label>Lignes</label>
-      <input type="number" id="rows" value="4" min="1" max="128" oninput="App.updateGrid()">
-      <label>Décalage global X</label>
-      <input type="number" id="offx" value="0" min="0" oninput="App.updateGrid()">
-      <label>Décalage global Y</label>
-      <input type="number" id="offy" value="0" min="0" oninput="App.updateGrid()">
-      <label>Espacement X</label>
-      <input type="number" id="padx" value="0" min="0" oninput="App.updateGrid()">
-      <label>Espacement Y</label>
-      <input type="number" id="pady" value="0" min="0" oninput="App.updateGrid()">
+    <div class="panel-header">
+      <span class="panel-header-title">Paramètres</span>
+      <button class="panel-collapse-btn" title="Réduire" onclick="Panels.collapseLeft()">◀</button>
     </div>
+    <div class="panel-scroll">
 
-    <div class="psec">
-      <h3>Taille de frame</h3>
-      <div class="crow">
-        <input type="checkbox" id="custom-size" onchange="App.toggleCustomSize()">
-        <span>Taille personnalisée</span>
+      <div class="psec" id="psec-decoupage">
+        <div class="psec-header" onclick="Panels.toggleSection('psec-decoupage')">
+          <h3>Découpage</h3>
+          <span class="psec-chevron">▾</span>
+        </div>
+        <div class="psec-body">
+          <label>Colonnes</label>
+          <input type="number" id="cols" value="4" min="1" max="128" oninput="App.updateGrid()">
+          <label>Lignes</label>
+          <input type="number" id="rows" value="4" min="1" max="128" oninput="App.updateGrid()">
+          <label>Décalage global X</label>
+          <input type="number" id="offx" value="0" min="0" oninput="App.updateGrid()">
+          <label>Décalage global Y</label>
+          <input type="number" id="offy" value="0" min="0" oninput="App.updateGrid()">
+          <label>Espacement X</label>
+          <input type="number" id="padx" value="0" min="0" oninput="App.updateGrid()">
+          <label>Espacement Y</label>
+          <input type="number" id="pady" value="0" min="0" oninput="App.updateGrid()">
+        </div>
       </div>
-      <label>Largeur (px)</label>
-      <input type="number" id="fw" value="0" min="1" disabled oninput="App.updateCustomSize()">
-      <label>Hauteur (px)</label>
-      <input type="number" id="fh" value="0" min="1" disabled oninput="App.updateCustomSize()">
-      <label>Zoom preview</label>
-      <div class="rrow">
-        <input type="range" id="zoom" min="0.5" max="12" step="0.5" value="3" oninput="App.updateZoom()">
-        <span id="zvl">3×</span>
-      </div>
-    </div>
 
-    <div class="psec">
-      <h3>Affichage</h3>
-      <label>Fond</label>
-      <select id="bg-mode" onchange="App.updateBg()">
-        <option value="checker" selected>Damier (transparence)</option>
-        <option value="color">Couleur unie</option>
-      </select>
-      <input type="color" id="bgc" value="#ffffff" oninput="App.updateBg()">
-      <div class="crow">
-        <input type="checkbox" id="sgrid" onchange="App.drawGrid()">
-        <span>Grille de pixels</span>
+      <div class="psec" id="psec-taille">
+        <div class="psec-header" onclick="Panels.toggleSection('psec-taille')">
+          <h3>Taille de frame</h3>
+          <span class="psec-chevron">▾</span>
+        </div>
+        <div class="psec-body">
+          <div class="crow">
+            <input type="checkbox" id="custom-size" onchange="App.toggleCustomSize()">
+            <span>Taille personnalisée</span>
+          </div>
+          <label>Largeur (px)</label>
+          <input type="number" id="fw" value="0" min="1" disabled oninput="App.updateCustomSize()">
+          <label>Hauteur (px)</label>
+          <input type="number" id="fh" value="0" min="1" disabled oninput="App.updateCustomSize()">
+          <label>Zoom preview</label>
+          <div class="rrow">
+            <input type="range" id="zoom" min="0.5" max="12" step="0.5" value="3" oninput="App.updateZoom()">
+            <span id="zvl">3×</span>
+          </div>
+        </div>
       </div>
-      <div class="crow">
-        <input type="checkbox" id="sonion" onchange="App.updateOnion()">
-        <span>Onion skin</span>
-      </div>
-      <div class="rrow" style="margin-top:6px">
-        <input type="range" id="oop" min="5" max="70" value="25" oninput="App.updateOnion()">
-        <span id="oopv">25%</span>
-      </div>
-    </div>
 
-    <div class="psec" style="border-bottom:none;padding-bottom:4px">
-      <h3>Animations</h3>
-      <button class="btn primary" onclick="App.addAnim()">+ Nouvelle animation</button>
+      <div class="psec" id="psec-affichage">
+        <div class="psec-header" onclick="Panels.toggleSection('psec-affichage')">
+          <h3>Affichage</h3>
+          <span class="psec-chevron">▾</span>
+        </div>
+        <div class="psec-body">
+          <label>Fond</label>
+          <select id="bg-mode" onchange="App.updateBg()">
+            <option value="checker" selected>Damier (transparence)</option>
+            <option value="color">Couleur unie</option>
+          </select>
+          <input type="color" id="bgc" value="#ffffff" oninput="App.updateBg()">
+          <div class="crow">
+            <input type="checkbox" id="sgrid" onchange="App.drawGrid()">
+            <span>Grille de pixels</span>
+          </div>
+          <div class="crow">
+            <input type="checkbox" id="sonion" onchange="App.updateOnion()">
+            <span>Onion skin</span>
+          </div>
+          <div class="rrow" style="margin-top:6px">
+            <input type="range" id="oop" min="5" max="70" value="25" oninput="App.updateOnion()">
+            <span id="oopv">25%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="psec" id="psec-anims">
+        <div class="psec-header" onclick="Panels.toggleSection('psec-anims')">
+          <h3>Animations</h3>
+          <span class="psec-chevron">▾</span>
+        </div>
+        <div class="psec-body" style="padding-bottom:4px">
+          <button class="btn primary" onclick="App.addAnim()" style="margin-top:0">+ Nouvelle animation</button>
+        </div>
+      </div>
+      <div id="anim-list"></div>
+
     </div>
-    <div id="anim-list"></div>
+    <div class="panel-resize-handle" id="resize-left"></div>
   </div>
 
   <!-- CENTER -->
@@ -114,7 +141,6 @@
       </div>
       <div class="psep"></div>
       <button class="lbtn on" id="lbtn" onclick="App.toggleLoop()">⟳ LOOP</button>
-      <button class="modebtn" id="cmparebtn" onclick="App.toggleCompare()">⊞ COMPARE</button>
       <span class="tsp"></span>
     </div>
 
@@ -211,9 +237,18 @@
 
   <!-- RIGHT PANEL -->
   <div id="panel-right">
+    <div class="panel-header">
+      <span class="panel-header-title">Propriétés</span>
+      <button class="panel-collapse-btn" title="Réduire" onclick="Panels.collapseRight()">▶</button>
+    </div>
+    <div class="panel-scroll">
 
-    <div class="psec">
-      <h3>Animation active</h3>
+    <div class="psec" id="psec-anim-active">
+      <div class="psec-header" onclick="Panels.toggleSection('psec-anim-active')">
+        <h3>Animation active</h3>
+        <span class="psec-chevron">▾</span>
+      </div>
+      <div class="psec-body">
       <label>Nom</label>
       <input type="text" id="aname" placeholder="idle, walk, run…" oninput="App.renameAnim()">
       <label>Frame début</label>
@@ -222,12 +257,15 @@
       <input type="number" id="aend" value="3" min="0" onchange="App.updateRange()">
       <div class="crow"><input type="checkbox" id="arev" onchange="App.updateRange()"><span>Lecture inversée</span></div>
       <div class="crow"><input type="checkbox" id="appc" onchange="App.updateRange()"><span>Ping-pong</span></div>
+      </div>
     </div>
 
-    <div class="psec">
-      <h3>Décalage par frame
-        <span id="fo-badge" style="font-size:9px;color:var(--orange);font-weight:normal"></span>
-      </h3>
+    <div class="psec" id="psec-offset">
+      <div class="psec-header" onclick="Panels.toggleSection('psec-offset')">
+        <h3>Décalage par frame <span id="fo-badge" style="font-size:9px;color:var(--orange);font-weight:normal;letter-spacing:0"></span></h3>
+        <span class="psec-chevron">▾</span>
+      </div>
+      <div class="psec-body">
       <p class="hint">Frame : <span id="fo-frame" style="color:var(--accent);font-family:'IBM Plex Mono',monospace">—</span></p>
       <div class="grid-2">
         <div><label>Offset X</label><input type="number" id="fo-x" value="0" onchange="App.setFrameOffset('x')"></div>
@@ -242,13 +280,18 @@
       </div>
     </div>
 
-    <div class="psec">
-      <h3>Sprite Sheet</h3>
+    <div class="psec collapsed" id="psec-spriteinfo">
+      <div class="psec-header" onclick="Panels.toggleSection('psec-spriteinfo')">
+        <h3>Sprite Sheet</h3>
+        <span class="psec-chevron">▾</span>
+      </div>
+      <div class="psec-body">
       <div class="irow"><span>Image</span><span id="isize">—</span></div>
       <div class="irow"><span>Frame size</span><span id="iframe">—</span></div>
       <div class="irow"><span>Total frames</span><span id="itotal">—</span></div>
       <div class="irow"><span>Frames animées</span><span id="ianim">—</span></div>
       <div class="irow"><span>Offsets custom</span><span id="ioffsets">0</span></div>
+      </div>
     </div>
 
     <!-- ── ASSETS / LAYERS ── -->
@@ -256,6 +299,7 @@
       <h3>Calques</h3>
       <button class="btn primary" id="btn-add-layer" onclick="document.getElementById('asset-input-over').click()" style="margin-top:0" disabled>+ Ajouter un asset</button>
       <div id="layer-list" style="margin-top:8px"></div>
+      </div>
     </div>
 
     <!-- Asset props panel -->
@@ -312,14 +356,6 @@
       </button>
     </div>
 
-    <div class="psec" id="compare-sec" style="display:none">
-      <h3>Comparer avec</h3>
-      <label>Animation B</label>
-      <select id="compare-anim" onchange="App.updateCompare()">
-        <option value="-1">Toutes les frames</option>
-      </select>
-    </div>
-
     <!-- hidden inputs kept for export logic -->
     <div style="display:none">
       <input type="range" id="gscale" min="0.5" max="4" step="0.5" value="2" oninput="App.setGifScale()">
@@ -334,6 +370,8 @@
       <button id="expjson"></button>
     </div>
 
+    </div><!-- /panel-scroll -->
+    <div class="panel-resize-handle" id="resize-right"></div>
   </div>
 </div>
 
@@ -522,6 +560,7 @@
 <script src="js/placement.js"></script>
 <script src="js/rulers.js"></script>
 <script src="js/assets.js"></script>
+<script src="js/panels.js"></script>
 <script src="js/exportmenu.js"></script>
 <script src="js/app.js"></script>
 </body>

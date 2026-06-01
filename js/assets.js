@@ -17,8 +17,13 @@ const Assets = (() => {
   let frameProps   = {};         // { layerId: { frameIdx: { x,y,scale,scaleX,scaleY,opacity,visible } } }
   let selectedId   = null;
   let nextId       = 1;
-  let dragReorder  = null;       // reorder drag state
-  let dragMove     = null;       // position drag state
+  let dragReorder  = null;
+  let dragMove     = null;
+  let undoCb       = null;       // pushUndo callback from app.js
+
+  // ── UNDO CALLBACK ──
+  function setUndoCallback(cb) { undoCb = cb; }
+  function pushUndo(desc) { if (undoCb) undoCb(desc); }
 
   // ── INIT ──
   function init(appState) {
@@ -37,6 +42,7 @@ const Assets = (() => {
 
   // ── LAYER CRUD ──
   function addLayer(dataUrl, name) {
+    pushUndo("ajout calque");
     const img = new Image();
     img.onload = () => {
       const fi = state.getCurrentFrameIndex ? state.getCurrentFrameIndex() : 0;
@@ -64,7 +70,8 @@ const Assets = (() => {
   }
 
   function removeLayer(id) {
-    if (id === SPRITE_ID) return; // cannot remove sprite
+    if (id === SPRITE_ID) return;
+    pushUndo("suppression calque"); // cannot remove sprite
     layers = layers.filter(l => l.id !== id);
     delete frameProps[id];
     if (selectedId === id) selectedId = SPRITE_ID;
@@ -247,15 +254,160 @@ const Assets = (() => {
     document.removeEventListener('mouseup',   onReorderUp);
   }
 
-  // ── DRAG POSITION (on canvas) ──
+  // ── HIT TEST: find topmost visible asset at image-space coords ──
+  function hitTest(imgX, imgY, fi) {
+    // Test layers top→bottom (layers[0] is topmost)
+    for (const layer of layers) {
+      if (layer.type === 'sprite') continue; // skip sprite for direct drag
+      const p = ep(layer.id, fi);
+      if (!p.visible) continue;
+      const scaleX = 1; // coords already in image space
+      const scaleY = 1;
+      const aw = layer.img ? layer.img.naturalWidth  * p.scale * p.scaleX : 0;
+      const ah = layer.img ? layer.img.naturalHeight * p.scale * p.scaleY : 0;
+      if (imgX >= p.x && imgX <= p.x + aw &&
+          imgY >= p.y && imgY <= p.y + ah) {
+        return layer.id;
+      }
+    }
+    return null;
+  }
+
+  // ── CANVAS PREVIEW INTERACTION ──
+  // Called by app.js to attach to the canvas slot
+  function attachCanvasEvents() {
+    const slotA = document.getElementById('slot-a');
+    if (!slotA) return;
+    slotA.addEventListener('mousedown', onCanvasMouseDown);
+    slotA.addEventListener('mousemove', onCanvasHover);
+  }
+
+  let canvasDrag = null; // { layerId, startMX, startMY, origX, origY, fi }
+
+  function screenToImageCoords(screenX, screenY) {
+    const slotA   = document.getElementById('slot-a');
+    const rect    = slotA.getBoundingClientRect();
+    const sx      = screenX - rect.left;
+    const sy      = screenY - rect.top;
+    const pan     = state.panOffset || { x: 0, y: 0 };
+    const fi      = state.getCurrentFrameIndex ? state.getCurrentFrameIndex() : 0;
+    const fo      = (state.frameOffsets || {})[fi] || {};
+    const fw      = state.customSize && state.customW > 0 ? state.customW : (fo.w || state.sprW || 1);
+    const fh      = state.customSize && state.customH > 0 ? state.customH : (fo.h || state.sprH || 1);
+    const dw      = fw * state.zoom;
+    const dh      = fh * state.zoom;
+    const originX = slotA.clientWidth  / 2 - dw / 2 + pan.x;
+    const originY = slotA.clientHeight / 2 - dh / 2 + pan.y;
+    return {
+      x: (sx - originX) / state.zoom,
+      y: (sy - originY) / state.zoom
+    };
+  }
+
+  function onCanvasHover(e) {
+    if (canvasDrag) return;
+    if (!state.img || !layers.length) return;
+    const fi     = state.getCurrentFrameIndex ? state.getCurrentFrameIndex() : 0;
+    const imgPt  = screenToImageCoords(e.clientX, e.clientY);
+    const hitId  = hitTest(imgPt.x, imgPt.y, fi);
+    const slotA  = document.getElementById('slot-a');
+    // Only change cursor if no placement tool is active
+    const activeTool = document.querySelector('.tool-btn.on');
+    if (!activeTool || activeTool.id === 'tool-none') {
+      slotA.style.cursor = hitId !== null ? 'grab' : '';
+    }
+    // Show asset name on hover
+    if (hitId !== null) {
+      const layer = getLayer(hitId);
+      document.getElementById('sframe').textContent =
+        'frame: ' + fi + ' · 📌 ' + (layer ? layer.name : '');
+    }
+  }
+
+  function onCanvasMouseDown(e) {
+    if (e.button !== 0) return;
+    if (!state.img || !layers.length) return;
+    // Skip if a placement tool is active (pan/source)
+    const activeTool = document.querySelector('.tool-btn.on');
+    if (activeTool && activeTool.id !== 'tool-none') return;
+
+    const fi    = state.getCurrentFrameIndex ? state.getCurrentFrameIndex() : 0;
+    const imgPt = screenToImageCoords(e.clientX, e.clientY);
+    const hitId = hitTest(imgPt.x, imgPt.y, fi);
+    if (hitId === null) return;
+
+    const layer  = getLayer(hitId);
+    const p      = ep(hitId, fi);
+
+    // Select this layer in the panel
+    selectedId = hitId;
+    renderLayerList();
+    syncPropsPanel();
+
+    canvasDrag = {
+      layerId: hitId,
+      startMX: e.clientX, startMY: e.clientY,
+      origX: p.x, origY: p.y,
+      fi
+    };
+
+    const slotA = document.getElementById('slot-a');
+    slotA.style.cursor = 'grabbing';
+
+    const onMove = ev => {
+      if (!canvasDrag) return;
+      const dx = Math.round((ev.clientX - canvasDrag.startMX) / state.zoom);
+      const dy = Math.round((ev.clientY - canvasDrag.startMY) / state.zoom);
+      const newX = canvasDrag.origX + dx;
+      const newY = canvasDrag.origY + dy;
+      // Always write as frame override on current frame
+      const layerId = canvasDrag.layerId;
+      const cfi     = canvasDrag.fi;
+      if (!frameProps[layerId]) frameProps[layerId] = {};
+      if (!frameProps[layerId][cfi]) frameProps[layerId][cfi] = {};
+      frameProps[layerId][cfi].x = newX;
+      frameProps[layerId][cfi].y = newY;
+      // Sync fields
+      const fx = document.getElementById('ap-x');
+      const fy = document.getElementById('ap-y');
+      if (fx) fx.value = newX;
+      if (fy) fy.value = newY;
+      Renderer.render();
+    };
+
+    const onUp = () => {
+      if (canvasDrag) {
+        slotA.style.cursor = 'grab';
+        canvasDrag = null;
+        // Refresh UI — push undo after drag
+        pushUndo('déplacement asset');
+        renderLayerList();
+        syncPropsPanel();
+        // Auto-enable frame in 'frame' mode if not already
+        if (layer && layer.mode === 'frame') {
+          layer.frameEnabled[fi] = true;
+          renderFrameGrid(layer);
+        }
+      }
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  // ── DRAG POSITION (from props panel handle) ──
   function startMoveDrag(e, layerId) {
     if (!state.img) return;
     const l  = getLayer(layerId);
     if (!l)  return;
     const fi = state.getCurrentFrameIndex ? state.getCurrentFrameIndex() : 0;
     const p  = ep(layerId, fi);
-    const pf = document.getElementById('ap-per-frame')?.checked && layerId !== SPRITE_ID;
-    dragMove = { layerId, startMX: e.clientX, startMY: e.clientY, origX: p.x, origY: p.y, perFrame: pf };
+    // Always frame override when dragging from panel handle too
+    dragMove = { layerId, startMX: e.clientX, startMY: e.clientY, origX: p.x, origY: p.y, perFrame: true };
     const onMove = ev => {
       if (!dragMove) return;
       const dx = Math.round((ev.clientX - dragMove.startMX) / state.zoom);
@@ -509,6 +661,9 @@ const Assets = (() => {
 
   return {
     init, addLayer, removeLayer, drawAll,
+    attachCanvasEvents,
+    effectiveProps: (id, fi) => ep(id, fi),
+    setUndoCallback,
     renderLayerList, syncPropsPanel,
     setProp, clearFrameOverride, copyFrameToAll,
     toggleFrameEnable,

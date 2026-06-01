@@ -6,13 +6,11 @@ const Renderer = (() => {
   const cvP  = document.getElementById('c-preview');
   const cvO  = document.getElementById('c-onion');
   const cvG  = document.getElementById('c-grid');
-  const cvPB = document.getElementById('c-preview-b');
   const cvFS = document.getElementById('fs-canvas');
 
   const ctxP  = cvP.getContext('2d');
   const ctxO  = cvO.getContext('2d');
   const ctxG  = cvG.getContext('2d');
-  const ctxPB = cvPB.getContext('2d');
   const ctxFS = cvFS.getContext('2d');
 
   let state = null;
@@ -105,24 +103,6 @@ const Renderer = (() => {
     const bg = document.getElementById('cbg');
     bg.style.cssText = `position:absolute;${pos}width:${dw}px;height:${dh}px;display:block;box-shadow:0 0 0 1px var(--border),0 6px 30px rgba(0,0,0,.5);`;
     applyBg(bg);
-
-    // Slot B (compare)
-    if (state.compareMode) {
-      const bFi            = state.getCompareFrameIndex();
-      const { w: bfw, h: bfh } = getDrawSize(bFi);
-      const bdw = Math.round(bfw * state.zoom);
-      const bdh = Math.round(bfh * state.zoom);
-      cvPB.width = bfw; cvPB.height = bfh;
-      const slotB = document.getElementById('slot-b');
-      const bW    = slotB.clientWidth  || 600;
-      const bH    = slotB.clientHeight || 400;
-      const bcx   = Math.round(bW / 2 - bdw / 2 + pan.x);
-      const bcy   = Math.round(bH / 2 - bdh / 2 + pan.y);
-      cvPB.style.cssText = `${abs}left:${bcx}px;top:${bcy}px;width:${bdw}px;height:${bdh}px;display:block`;
-      const bgB = document.getElementById('cbg-b');
-      bgB.style.cssText  = `position:absolute;left:${bcx}px;top:${bcy}px;width:${bdw}px;height:${bdh}px;box-shadow:0 0 0 1px var(--border);`;
-      applyBg(bgB);
-    }
   }
 
   // ── RENDER ──
@@ -141,13 +121,8 @@ const Renderer = (() => {
 
     renderOnion();
     renderGrid();
-
-    if (state.compareMode) {
-      const bFi            = state.getCompareFrameIndex();
-      const { w: bfw, h: bfh } = getDrawSize(bFi);
-      drawFrameTo(bFi, ctxPB, bfw, bfh);
-    }
-
+    // Draw selection handles on selected asset
+    if (typeof Assets !== 'undefined') drawSelectionOverlay();
     if (document.getElementById('fs-overlay')?.classList.contains('show')) renderFullscreen();
     if (typeof Rulers    !== 'undefined' && Rulers.enabled)   Rulers.redraw();
     if (typeof Placement !== 'undefined') Placement.renderSheetViewer();
@@ -252,6 +227,72 @@ const Renderer = (() => {
       drawFrameTo(fi, ctx, W, H);
     }
     return cv;
+  }
+
+  // ── SELECTION OVERLAY ──
+  function drawSelectionOverlay() {
+    const selId = Assets.selectedId;
+    if (selId === null || selId === Assets.SPRITE_ID) return;
+    const layer = Assets.layers.find(l => l.id === selId);
+    if (!layer || layer.type !== 'asset' || !layer.img) return;
+    const fi  = state.getCurrentFrameIndex();
+    const p   = Assets.effectiveProps ? null : null; // use ep via drawAll
+    // Get effective props by reading frameProps + layer
+    const fp   = (Assets.frameProps[selId] || {})[fi] || {};
+    const lp   = layer;
+    const ex   = fp.x   !== undefined ? fp.x   : lp.x;
+    const ey   = fp.y   !== undefined ? fp.y   : lp.y;
+    const esc  = fp.scale !== undefined ? fp.scale : lp.scale;
+    const escX = fp.scaleX !== undefined ? fp.scaleX : lp.scaleX;
+    const escY = fp.scaleY !== undefined ? fp.scaleY : lp.scaleY;
+    const vis  = lp.mode === 'frame' ? !!(lp.frameEnabled[fi]) : (fp.visible !== undefined ? fp.visible : lp.visible);
+    if (!vis) return;
+
+    const { w: fw, h: fh } = getDrawSize(fi);
+    const scX = fw / (state.sprW || fw);
+    const scY = fh / (state.sprH || fh);
+    const aw  = layer.img.naturalWidth  * esc * escX * scX * state.zoom;
+    const ah  = layer.img.naturalHeight * esc * escY * scY * state.zoom;
+    const pan = state.panOffset || { x: 0, y: 0 };
+    const dw  = fw * state.zoom;
+    const dh  = fh * state.zoom;
+    const slotA  = document.getElementById('slot-a');
+    const originX = slotA.clientWidth  / 2 - dw / 2 + pan.x;
+    const originY = slotA.clientHeight / 2 - dh / 2 + pan.y;
+    const screenX = originX + ex * scX * state.zoom;
+    const screenY = originY + ey * scY * state.zoom;
+
+    // Draw on a temporary overlay canvas (reuse cvG temporarily, or use a dedicated one)
+    const ov = document.getElementById('c-overlay');
+    if (!ov) return;
+    const octx = ov.getContext('2d');
+    ov.width  = slotA.clientWidth;
+    ov.height = slotA.clientHeight;
+    ov.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:12;';
+    octx.clearRect(0, 0, ov.width, ov.height);
+
+    const pad = 3;
+    octx.strokeStyle = 'rgba(252,92,124,0.9)';
+    octx.lineWidth   = 1.5;
+    octx.setLineDash([4, 3]);
+    octx.strokeRect(screenX - pad, screenY - pad, aw + pad * 2, ah + pad * 2);
+    octx.setLineDash([]);
+
+    // Corner handles
+    const hs = 6;
+    octx.fillStyle = '#fff';
+    octx.strokeStyle = 'rgba(252,92,124,0.9)';
+    octx.lineWidth = 1.5;
+    [[screenX - pad, screenY - pad],[screenX + aw + pad, screenY - pad],
+     [screenX - pad, screenY + ah + pad],[screenX + aw + pad, screenY + ah + pad]].forEach(([hx, hy]) => {
+      octx.fillRect(hx - hs/2, hy - hs/2, hs, hs);
+      octx.strokeRect(hx - hs/2, hy - hs/2, hs, hs);
+    });
+
+    // Label
+    octx.fillStyle   = 'rgba(252,92,124,0.9)';
+    octx.font        = '10px monospace';
+    octx.fillText(layer.name + ` (${Math.round(ex)},${Math.round(ey)})`, screenX, screenY - pad - 4);
   }
 
   return {

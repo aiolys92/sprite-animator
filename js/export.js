@@ -52,9 +52,15 @@ const Export = (() => {
       frames.forEach(fi => {
         tc.clearRect(0, 0, W, H);
         tc.imageSmoothingEnabled = false;
+        // Draw background if solid color
         if (state.bgMode === 'color') { tc.fillStyle = state.bgColor; tc.fillRect(0, 0, W, H); }
-        const { sx, sy, sw, sh } = Renderer.getRect(fi);
-        tc.drawImage(state.img, sx, sy, sw, sh, 0, 0, W, H);
+        // Draw all layers (Assets handles sprite + asset layers in correct order)
+        if (typeof Assets !== 'undefined') {
+          Assets.drawAll(tc, W, H, fi);
+        } else {
+          const { sx, sy, sw, sh } = Renderer.getRect(fi);
+          tc.drawImage(state.img, sx, sy, sw, sh, 0, 0, W, H);
+        }
         gif.addFrame(tmp, { copy: true, delay: state.frameDurations[fi] || Math.round(1000 / state.fps) });
       });
 
@@ -91,13 +97,27 @@ const Export = (() => {
 
     App.toast(`Export de ${frames.length} frames…`);
 
-    // Small delay to avoid browser blocking multiple downloads
     for (let i = 0; i < frames.length; i++) {
-      const fi = frames[i];
-      const cv = Renderer.getFrameCanvas(fi, scale);
-      const dataUrl = cv.toDataURL('image/png');
+      const fi  = frames[i];
+      const { sw, sh } = Renderer.getRect(fi);
+      const W   = Math.round(sw * scale);
+      const H   = Math.round(sh * scale);
+      const cv  = document.createElement('canvas');
+      cv.width  = W; cv.height = H;
+      const ctx = cv.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      // Background
+      if (state.bgMode === 'color') { ctx.fillStyle = state.bgColor; ctx.fillRect(0, 0, W, H); }
+      // All layers including assets
+      if (typeof Assets !== 'undefined') {
+        Assets.drawAll(ctx, W, H, fi);
+      } else {
+        const { sx, sy, sw: sw2, sh: sh2 } = Renderer.getRect(fi);
+        ctx.drawImage(state.img, sx, sy, sw2, sh2, 0, 0, W, H);
+      }
+      const dataUrl  = cv.toDataURL('image/png');
       const filename = `${prefix}_${String(i).padStart(3, '0')}.png`;
-      await new Promise(resolve => setTimeout(resolve, 80));
+      await new Promise(resolve => setTimeout(resolve, 60));
       download(dataUrl, filename);
     }
     App.toast(`${frames.length} frames exportées !`, 'ok');

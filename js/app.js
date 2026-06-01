@@ -25,8 +25,6 @@ const App = (() => {
     gifScale:       2,
     anims:          [],
     activeAnim:     -1,
-    compareAnim:    -1,
-    compareMode:    false,
     frameOffsets:   {},
     frameDurations: {},
     customSize:     false,
@@ -55,10 +53,6 @@ const App = (() => {
       const f = Animations.getFrames();
       return f[state.curFrame] ?? 0;
     };
-    state.getCompareFrameIndex = () => {
-      const f = Animations.getFrames(state.compareAnim);
-      return f[Math.min(state.curFrame, f.length - 1)] ?? 0;
-    };
 
     // Init modules
     Renderer.init(state);
@@ -67,6 +61,8 @@ const App = (() => {
     Placement.init(state);
     Rulers.init(state);
     Assets.init(state);
+    Assets.attachCanvasEvents();
+    Assets.setUndoCallback(pushUndo);
 
     // Init UI values
     document.getElementById('fpsv').textContent  = state.fps + ' fps';
@@ -106,23 +102,32 @@ const App = (() => {
 
   // ── UNDO ──
   function pushUndo(desc) {
-    undoStack.push({
-      desc,
-      snapshot: JSON.stringify({
-        cols: document.getElementById('cols').value,
-        rows: document.getElementById('rows').value,
-        offx: document.getElementById('offx').value,
-        offy: document.getElementById('offy').value,
-        padx: document.getElementById('padx').value,
-        pady: document.getElementById('pady').value,
-        customSize: state.customSize,
-        customW:    state.customW,
-        customH:    state.customH,
-        frameOffsets:  state.frameOffsets,
-        anims:         state.anims,
-        activeAnim:    state.activeAnim
-      })
-    });
+    // Capture full serializable state
+    const snap = {
+      cols: document.getElementById('cols').value,
+      rows: document.getElementById('rows').value,
+      offx: document.getElementById('offx').value,
+      offy: document.getElementById('offy').value,
+      padx: document.getElementById('padx').value,
+      pady: document.getElementById('pady').value,
+      customSize:   state.customSize,
+      customW:      state.customW,
+      customH:      state.customH,
+      frameOffsets: state.frameOffsets,
+      anims:        state.anims,
+      activeAnim:   state.activeAnim,
+      fps:          state.fps,
+      zoom:         state.zoom,
+      bgMode:       state.bgMode,
+      bgColor:      state.bgColor,
+      frameDurations: state.frameDurations,
+    };
+    // Capture layer state if Assets is available
+    if (typeof Assets !== 'undefined') {
+      snap.layers     = Assets.getLayersData();
+      snap.frameProps = JSON.parse(JSON.stringify(Assets.frameProps));
+    }
+    undoStack.push({ desc, snapshot: JSON.stringify(snap) });
     if (undoStack.length > MAX_UNDO) undoStack.shift();
     updateUndoBtn();
   }
@@ -131,21 +136,39 @@ const App = (() => {
     if (!undoStack.length) return;
     const { desc, snapshot } = undoStack.pop();
     const s = JSON.parse(snapshot);
+
+    // Restore grid
     document.getElementById('cols').value = s.cols;
     document.getElementById('rows').value = s.rows;
     document.getElementById('offx').value = s.offx;
     document.getElementById('offy').value = s.offy;
     document.getElementById('padx').value = s.padx;
     document.getElementById('pady').value = s.pady;
-    state.customSize   = s.customSize;
-    state.customW      = s.customW;
-    state.customH      = s.customH;
-    state.frameOffsets = JSON.parse(JSON.stringify(s.frameOffsets));
-    state.anims        = JSON.parse(JSON.stringify(s.anims));
-    state.activeAnim   = s.activeAnim;
+    state.customSize     = s.customSize;
+    state.customW        = s.customW;
+    state.customH        = s.customH;
+    state.frameOffsets   = JSON.parse(JSON.stringify(s.frameOffsets || {}));
+    state.anims          = JSON.parse(JSON.stringify(s.anims || []));
+    state.activeAnim     = s.activeAnim;
+    state.frameDurations = JSON.parse(JSON.stringify(s.frameDurations || {}));
+    if (s.fps)    { state.fps = s.fps; document.getElementById('fps').value = s.fps; document.getElementById('fpsv').textContent = s.fps + ' fps'; }
+    if (s.zoom)   { state.zoom = s.zoom; document.getElementById('zoom').value = s.zoom; document.getElementById('zvl').textContent = s.zoom + '×'; }
+    if (s.bgMode) { state.bgMode = s.bgMode; document.getElementById('bg-mode').value = s.bgMode; }
+    if (s.bgColor){ state.bgColor = s.bgColor; document.getElementById('bgc').value = s.bgColor; }
+
+    // Restore layers
+    if (typeof Assets !== 'undefined' && s.layers) {
+      Assets.applyLayersData(s.layers, s.frameProps || {});
+    }
+
     updateGridInternal();
     Animations.syncEditor();
     Animations.renderList();
+    if (typeof Assets !== 'undefined') {
+      Assets.renderLayerList();
+      Assets.syncPropsPanel();
+    }
+
     // Show undo bar
     const bar = document.getElementById('undo-bar');
     bar.classList.add('show');
@@ -174,7 +197,7 @@ const App = (() => {
       state.frameDurations = {};
       document.getElementById('tfile').textContent = name;
       document.getElementById('dropzone').classList.add('hidden');
-      document.getElementById('detect-badge').style.display = 'inline';
+      // detect-badge removed
       document.getElementById('btn-sheet').disabled = false;
       document.getElementById('smsg').textContent  = 'Chargé : ' + name;
       document.getElementById('smsg').className    = 's-ok';
@@ -213,7 +236,6 @@ const App = (() => {
     updateInfo();
     Animations.renderList();
     Animations.syncEditor();
-    Animations.updateCompareSelect();
     Animations.updateCounter();
   }
 
@@ -446,7 +468,6 @@ const App = (() => {
       Animations.syncEditor();
       Animations.renderList();
       Animations.buildStrip();
-      Animations.updateCompareSelect();
       Renderer.render();
       updateInfo();
     },
@@ -465,36 +486,6 @@ const App = (() => {
       a.pp       = document.getElementById('appc').checked;
       state.curFrame = 0;
       Animations.buildStrip(); Renderer.render(); updateInfo(); Animations.renderList();
-    },
-
-    // Compare
-    toggleCompare() {
-      state.compareMode = !state.compareMode;
-      const btn   = document.getElementById('cmparebtn');
-      btn.classList.toggle('on', state.compareMode);
-      const wrap  = document.getElementById('canvas-wrap');
-      const slotA = document.getElementById('slot-a');
-      const slotB = document.getElementById('slot-b');
-      const labelA = document.getElementById('label-a');
-      if (state.compareMode) {
-        wrap.style.display = 'grid';
-        wrap.style.gridTemplateColumns = '1fr 1fr';
-        slotA.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border-right:1px solid var(--border)';
-        slotB.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden';
-        labelA.style.display = 'block';
-        document.getElementById('compare-sec').style.display = 'block';
-      } else {
-        wrap.style.display = '';
-        slotA.style.cssText = 'position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden';
-        slotB.style.display = 'none';
-        labelA.style.display = 'none';
-        document.getElementById('compare-sec').style.display = 'none';
-      }
-      Renderer.render();
-    },
-    updateCompare() {
-      state.compareAnim = parseInt(document.getElementById('compare-anim').value);
-      Renderer.render();
     },
 
     // Strip mode
@@ -559,4 +550,4 @@ const App = (() => {
 })();
 
 // ── BOOT ──
-document.addEventListener('DOMContentLoaded', () => { App.init(); window.state = App.state; ExportMenu.init(); });
+document.addEventListener('DOMContentLoaded', () => { App.init(); window.state = App.state; ExportMenu.init(); Panels.init(); });

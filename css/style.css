@@ -99,44 +99,140 @@ body {
 /* ── PANELS ── */
 #panel-left {
   width: 248px;
+  min-width: 180px;
+  max-width: 420px;
   flex-shrink: 0;
   background: var(--bg2);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+  position: relative;
+  transition: width .15s ease;
 }
+#panel-left.collapsed { width: 0 !important; min-width: 0; }
+
 #panel-right {
   width: 228px;
+  min-width: 180px;
+  max-width: 420px;
   flex-shrink: 0;
   background: var(--bg2);
   border-left: 1px solid var(--border);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  transition: width .15s ease;
 }
+#panel-right.collapsed { width: 0 !important; min-width: 0; }
+
+/* Panel scroll area */
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Resize handle */
+.panel-resize-handle {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background .15s;
+}
+.panel-resize-handle:hover,
+.panel-resize-handle.dragging { background: var(--accent); }
+#panel-left  .panel-resize-handle { right: 0; }
+#panel-right .panel-resize-handle { left: 0; }
+
+/* Panel header with collapse button */
+.panel-header {
+  height: 32px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.panel-header-title {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text2);
+  flex: 1;
+}
+.panel-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all .15s;
+  line-height: 1;
+}
+.panel-collapse-btn:hover { color: var(--accent); background: rgba(124,92,252,.1); }
+
 #panel-left::-webkit-scrollbar,
 #panel-right::-webkit-scrollbar,
+.panel-scroll::-webkit-scrollbar,
 #anim-list::-webkit-scrollbar { width: 3px; }
 #panel-left::-webkit-scrollbar-thumb,
 #panel-right::-webkit-scrollbar-thumb,
+.panel-scroll::-webkit-scrollbar-thumb,
 #anim-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* ── PANEL SECTIONS ── */
 .psec {
   border-bottom: 1px solid var(--border);
-  padding: 12px;
   flex-shrink: 0;
 }
-.psec h3 {
+.psec-header {
+  display: flex;
+  align-items: center;
+  padding: 9px 12px;
+  cursor: pointer;
+  user-select: none;
+  gap: 6px;
+  transition: background .12s;
+}
+.psec-header:hover { background: rgba(255,255,255,.02); }
+.psec h3, .psec-header h3 {
   font-size: 10px;
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: .12em;
   color: var(--text2);
-  margin-bottom: 10px;
+  margin: 0;
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
+}
+.psec-chevron {
+  font-size: 10px;
+  color: var(--text2);
+  transition: transform .15s;
+  flex-shrink: 0;
+}
+.psec.collapsed .psec-chevron { transform: rotate(-90deg); }
+.psec-body {
+  padding: 0 12px 12px;
+}
+.psec.collapsed .psec-body { display: none; }
+
+/* non-collapsible psec (simple header) */
+.psec > h3 {
+  padding: 9px 12px;
+  margin: 0;
 }
 .badge {
   font-size: 9px;
@@ -1184,3 +1280,40 @@ body.drag-over #canvas-wrap::after {
 }
 #ap-frame-grid > div:last-child::-webkit-scrollbar { width: 3px; }
 #ap-frame-grid > div:last-child::-webkit-scrollbar-thumb { background: var(--border); border-radius:2px; }
+
+/* ── PANEL SHOW BUTTONS (when panel is collapsed) ── */
+#panel-toggle-bar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 30;
+  pointer-events: none;
+  left: 0; right: 0;
+}
+.panel-show-btn {
+  pointer-events: all;
+  padding: 6px 10px;
+  border-radius: 0 6px 6px 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-left: none;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  transition: all .15s;
+  width: fit-content;
+}
+.panel-show-btn.right {
+  margin-left: auto;
+  border-radius: 6px 0 0 6px;
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+.panel-show-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── APP POSITION RELATIVE for toggle bar ── */
+#app { position: relative; }

@@ -105,19 +105,6 @@ const Animations = (() => {
     document.getElementById('arev').checked  = !!a.rev;
     document.getElementById('appc').checked  = !!a.pp;
   }
-
-  // ── COMPARE SELECT ──
-  function updateCompareSelect() {
-    const sel = document.getElementById('compare-anim');
-    sel.innerHTML = '<option value="-1">Toutes les frames</option>';
-    state.anims.forEach((a, i) => {
-      const opt = document.createElement('option');
-      opt.value       = i;
-      opt.textContent = a.name;
-      sel.appendChild(opt);
-    });
-  }
-
   // ── FRAME STRIP ──
   function buildStrip() {
     const strip    = document.getElementById('strip');
@@ -204,7 +191,6 @@ const Animations = (() => {
     getFrames,
     renderList,
     syncEditor,
-    updateCompareSelect,
     buildStrip,
     highlightStrip,
     updateCounter
