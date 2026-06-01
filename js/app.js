@@ -174,15 +174,11 @@ const App = (() => {
       state.frameDurations = {};
       document.getElementById('tfile').textContent = name;
       document.getElementById('dropzone').classList.add('hidden');
-      // Enable export buttons
-      ['btn-gif', 'btn-frames', 'btn-json', 'expbtn', 'expframes', 'expjson'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.disabled = false;
-      });
       document.getElementById('detect-badge').style.display = 'inline';
       document.getElementById('btn-sheet').disabled = false;
       document.getElementById('smsg').textContent  = 'Chargé : ' + name;
       document.getElementById('smsg').className    = 's-ok';
+      ExportMenu.setEnabled(true);
       updateGridInternal();
       toast('Sprite sheet chargée !', 'ok');
     };
@@ -563,4 +559,4 @@ const App = (() => {
 })();
 
 // ── BOOT ──
-document.addEventListener('DOMContentLoaded', () => { App.init(); window.state = App.state; });
+document.addEventListener('DOMContentLoaded', () => { App.init(); window.state = App.state; ExportMenu.init(); });

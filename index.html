@@ -17,9 +17,7 @@
   <button class="tbtn" onclick="App.openImage()">📂 Ouvrir</button>
   <button class="tbtn" onclick="App.saveProject()">💾 Sauvegarder</button>
   <button class="tbtn" onclick="App.loadProject()">📁 Charger</button>
-  <button class="tbtn warn" onclick="App.exportGif()" id="btn-gif" disabled>🎞 GIF</button>
-  <button class="tbtn" onclick="App.exportFrames()" id="btn-frames" disabled>🖼 Frames</button>
-  <button class="tbtn" onclick="App.exportJSON()" id="btn-json" disabled>📄 JSON</button>
+  <button class="tbtn warn" id="btn-export-main" onclick="ExportMenu.toggle()" disabled>↑ Exporter</button>
   <button class="tbtn" onclick="App.toggleFullscreen()">⛶ Preview</button>
 </div>
 
@@ -255,8 +253,8 @@
 
     <!-- ── ASSETS / LAYERS ── -->
     <div class="psec">
-      <h3>Assets & Calques</h3>
-
+      <h3>Calques</h3>
+      <button class="btn primary" id="btn-add-layer" onclick="document.getElementById('asset-input-over').click()" style="margin-top:0" disabled>+ Ajouter un asset</button>
       <div id="layer-list" style="margin-top:8px"></div>
     </div>
 
@@ -322,42 +320,18 @@
       </select>
     </div>
 
-    <div class="psec">
-      <h3>Export GIF</h3>
-      <label>Échelle</label>
-      <div class="rrow">
-        <input type="range" id="gscale" min="0.5" max="4" step="0.5" value="2" oninput="App.setGifScale()">
-        <span id="gscalev">2×</span>
-      </div>
-      <label>Qualité dither</label>
-      <div class="rrow">
-        <input type="range" id="gqual" min="1" max="20" value="10" oninput="this.nextElementSibling.textContent=this.value">
-        <span>10</span>
-      </div>
-      <button class="btn success" id="expbtn" onclick="App.exportGif()" disabled>🎞 Exporter en GIF</button>
-      <div id="gif-progress" style="display:none">
-        <progress id="gif-bar" value="0" max="100"></progress>
-        <span id="gif-txt">Génération…</span>
-      </div>
-    </div>
-
-    <div class="psec">
-      <h3>Export Frames PNG</h3>
-      <label>Préfixe</label>
+    <!-- hidden inputs kept for export logic -->
+    <div style="display:none">
+      <input type="range" id="gscale" min="0.5" max="4" step="0.5" value="2" oninput="App.setGifScale()">
+      <span id="gscalev">2×</span>
+      <input type="range" id="gqual" min="1" max="20" value="10">
       <input type="text" id="export-prefix" value="frame">
-      <label>Échelle</label>
-      <div class="rrow">
-        <input type="range" id="escale" min="1" max="4" step="1" value="1" oninput="this.nextElementSibling.textContent=this.value+'×'">
-        <span>1×</span>
-      </div>
-      <button class="btn" id="expframes" onclick="App.exportFrames()" disabled>🖼 Exporter frames PNG</button>
-    </div>
-
-    <div class="psec">
-      <h3>Export JSON</h3>
-      <div class="crow"><input type="checkbox" id="json-phaser" checked><span>Format Phaser 3</span></div>
-      <div class="crow"><input type="checkbox" id="json-pixijs"><span>Format PixiJS</span></div>
-      <button class="btn" id="expjson" onclick="App.exportJSON()" disabled>📄 Exporter JSON</button>
+      <input type="range" id="escale" min="1" max="4" step="1" value="1">
+      <input type="checkbox" id="json-phaser" checked>
+      <input type="checkbox" id="json-pixijs">
+      <button id="expbtn"></button>
+      <button id="expframes"></button>
+      <button id="expjson"></button>
     </div>
 
   </div>
@@ -422,6 +396,120 @@
 </div>
 
 <input type="file" id="file-input" accept="image/*" style="display:none" onchange="App.handleFileInput(event)">
+<!-- ── EXPORT MENU ── -->
+<div id="export-menu" class="hidden">
+  <div id="export-menu-backdrop" onclick="ExportMenu.close()"></div>
+  <div id="export-panel">
+
+    <div id="export-panel-header">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--accent)">↑ Exporter</span>
+      <span id="export-info" style="font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace"></span>
+      <span style="flex:1"></span>
+      <button onclick="ExportMenu.close()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:4px">✕</button>
+    </div>
+
+    <!-- GIF -->
+    <div class="export-block" id="exp-block-gif">
+      <div class="export-block-header" onclick="ExportMenu.toggleBlock('gif')">
+        <span class="export-type-icon">🎞</span>
+        <div>
+          <div class="export-type-name">GIF animé</div>
+          <div class="export-type-desc" id="exp-desc-gif">animation complète</div>
+        </div>
+        <span class="export-chevron" id="exp-chev-gif">▾</span>
+      </div>
+      <div class="export-block-body" id="exp-body-gif">
+        <div class="exp-row">
+          <label>Échelle</label>
+          <div class="rrow">
+            <input type="range" id="em-gscale" min="0.5" max="4" step="0.5" value="2"
+              oninput="document.getElementById('em-gscale-v').textContent=this.value+'×';document.getElementById('gscale').value=this.value;App.setGifScale()">
+            <span id="em-gscale-v">2×</span>
+          </div>
+        </div>
+        <div class="exp-row">
+          <label>Qualité dither</label>
+          <div class="rrow">
+            <input type="range" id="em-gqual" min="1" max="20" value="10"
+              oninput="document.getElementById('em-gqual-v').textContent=this.value;document.getElementById('gqual').value=this.value">
+            <span id="em-gqual-v">10</span>
+          </div>
+        </div>
+        <div id="gif-progress" style="display:none;margin-bottom:6px">
+          <progress id="gif-bar" value="0" max="100" style="width:100%;height:4px;accent-color:var(--accent)"></progress>
+          <span id="gif-txt" style="font-size:10px;color:var(--text2);display:block;margin-top:3px;text-align:center">Génération…</span>
+        </div>
+        <button class="exp-btn exp-btn-primary" id="expbtn" onclick="App.exportGif()" disabled>🎞 Exporter en GIF</button>
+      </div>
+    </div>
+
+    <!-- PNG Frames -->
+    <div class="export-block" id="exp-block-png">
+      <div class="export-block-header" onclick="ExportMenu.toggleBlock('png')">
+        <span class="export-type-icon">🖼</span>
+        <div>
+          <div class="export-type-name">Frames PNG</div>
+          <div class="export-type-desc" id="exp-desc-png">une image par frame</div>
+        </div>
+        <span class="export-chevron" id="exp-chev-png">▾</span>
+      </div>
+      <div class="export-block-body" id="exp-body-png">
+        <div class="exp-row">
+          <label>Préfixe des fichiers</label>
+          <input type="text" id="em-prefix" value="frame"
+            oninput="document.getElementById('export-prefix').value=this.value">
+        </div>
+        <div class="exp-row">
+          <label>Échelle</label>
+          <div class="rrow">
+            <input type="range" id="em-escale" min="1" max="4" step="1" value="1"
+              oninput="document.getElementById('em-escale-v').textContent=this.value+'×';document.getElementById('escale').value=this.value">
+            <span id="em-escale-v">1×</span>
+          </div>
+        </div>
+        <button class="exp-btn" id="expframes" onclick="App.exportFrames()" disabled>🖼 Exporter frames PNG</button>
+      </div>
+    </div>
+
+    <!-- JSON -->
+    <div class="export-block" id="exp-block-json">
+      <div class="export-block-header" onclick="ExportMenu.toggleBlock('json')">
+        <span class="export-type-icon">📄</span>
+        <div>
+          <div class="export-type-name">JSON</div>
+          <div class="export-type-desc">données pour moteur de jeu</div>
+        </div>
+        <span class="export-chevron" id="exp-chev-json">▾</span>
+      </div>
+      <div class="export-block-body" id="exp-body-json">
+        <div class="exp-row">
+          <label>Format</label>
+          <div class="crow" style="margin-top:4px"><input type="checkbox" id="em-phaser" checked onchange="document.getElementById('json-phaser').checked=this.checked"><span>Phaser 3</span></div>
+          <div class="crow"><input type="checkbox" id="em-pixijs" onchange="document.getElementById('json-pixijs').checked=this.checked"><span>PixiJS</span></div>
+        </div>
+        <button class="exp-btn" id="expjson" onclick="App.exportJSON()" disabled>📄 Exporter JSON</button>
+      </div>
+    </div>
+
+    <!-- Projet -->
+    <div class="export-block" id="exp-block-proj">
+      <div class="export-block-header" onclick="ExportMenu.toggleBlock('proj')">
+        <span class="export-type-icon">💾</span>
+        <div>
+          <div class="export-type-name">Projet .spanim</div>
+          <div class="export-type-desc">sauvegarder / charger</div>
+        </div>
+        <span class="export-chevron" id="exp-chev-proj">▾</span>
+      </div>
+      <div class="export-block-body" id="exp-body-proj">
+        <button class="exp-btn exp-btn-primary" onclick="App.saveProject()">💾 Sauvegarder projet</button>
+        <button class="exp-btn" onclick="App.loadProject()" style="margin-top:6px">📁 Charger projet</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <input type="file" id="asset-input-over" accept="image/*" style="display:none" onchange="App.handleAssetInput(event)">
 <input type="file" id="project-input" accept=".spanim" style="display:none" onchange="App.handleProjectInput(event)">
 <canvas id="detect-canvas" style="display:none"></canvas>
@@ -434,6 +522,7 @@
 <script src="js/placement.js"></script>
 <script src="js/rulers.js"></script>
 <script src="js/assets.js"></script>
+<script src="js/exportmenu.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
