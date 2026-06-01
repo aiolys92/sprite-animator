@@ -1002,3 +1002,27 @@ body.drag-over #canvas-wrap::after {
 }
 .layer-item:hover  { border-color: var(--accent); }
 .layer-item.active { border-color: var(--accent); background: rgba(124,92,252,.1); }
+
+/* ── LAYER DRAG HANDLE ── */
+.layer-drag-handle {
+  color: var(--text2);
+  font-size: 13px;
+  cursor: grab;
+  padding: 0 3px;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: .6;
+  transition: opacity .15s;
+}
+.layer-drag-handle:hover { opacity: 1; color: var(--accent); }
+.layer-drag-handle:active { cursor: grabbing; }
+
+/* ── SPRITE LAYER (special) ── */
+.layer-sprite {
+  border-color: rgba(124,92,252,.3) !important;
+  background: rgba(124,92,252,.05) !important;
+}
+.layer-sprite.active {
+  border-color: var(--accent) !important;
+  background: rgba(124,92,252,.12) !important;
+}

@@ -256,10 +256,7 @@
     <!-- ── ASSETS / LAYERS ── -->
     <div class="psec">
       <h3>Assets & Calques</h3>
-      <div class="btn-row" style="margin-top:0">
-        <button class="btn" onclick="document.getElementById('asset-input-over').click()" style="font-size:10px">▲ Dessus</button>
-        <button class="btn" onclick="document.getElementById('asset-input-under').click()" style="font-size:10px">▼ Dessous</button>
-      </div>
+
       <div id="layer-list" style="margin-top:8px"></div>
     </div>
 
@@ -425,8 +422,7 @@
 </div>
 
 <input type="file" id="file-input" accept="image/*" style="display:none" onchange="App.handleFileInput(event)">
-<input type="file" id="asset-input-over"   accept="image/*" style="display:none" onchange="App.handleAssetInput(event,true)">
-<input type="file" id="asset-input-under" accept="image/*" style="display:none" onchange="App.handleAssetInput(event,false)">
+<input type="file" id="asset-input-over" accept="image/*" style="display:none" onchange="App.handleAssetInput(event)">
 <input type="file" id="project-input" accept=".spanim" style="display:none" onchange="App.handleProjectInput(event)">
 <canvas id="detect-canvas" style="display:none"></canvas>
 <div id="toast"></div>

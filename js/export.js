@@ -183,7 +183,7 @@ const Export = (() => {
       customSize:    state.customSize,
       guides:        Rulers.getGuides(),
       layers:        Assets.getLayersData(),
-      frameOverrides: Assets.frameOverrides,
+      layerFrameProps: Assets.frameProps,
       customW:       state.customW,
       customH:       state.customH
     };
@@ -218,7 +218,7 @@ const Export = (() => {
     state.customW       = data.customW || 0;
     state.customH       = data.customH || 0;
     if (data.guides) Rulers.setGuides(data.guides);
-    if (data.layers) Assets.applyLayersData(data.layers, data.frameOverrides);
+    if (data.layers) Assets.applyLayersData(data.layers, data.layerFrameProps);
 
     document.getElementById('fpsv').textContent  = state.fps + ' fps';
     document.getElementById('zvl').textContent   = state.zoom + '×';

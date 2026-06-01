@@ -1,5 +1,5 @@
-// ── RENDERER.JS ──
-// Handles all canvas drawing, positioning, grid, onion skin
+// ── RENDERER.JS v2 ──
+// Fixed zoom/resize, removed wheel zoom, layers via Assets.drawAll
 
 const Renderer = (() => {
 
@@ -16,7 +16,13 @@ const Renderer = (() => {
   const ctxFS = cvFS.getContext('2d');
 
   let state = null;
-  function init(appState) { state = appState; }
+
+  function init(appState) {
+    state = appState;
+    // ResizeObserver: re-render whenever the slot changes size
+    const ro = new ResizeObserver(() => { if (state.img) render(); });
+    ro.observe(document.getElementById('slot-a'));
+  }
 
   // ── RECT ──
   function getRect(idx) {
@@ -42,7 +48,7 @@ const Renderer = (() => {
     };
   }
 
-  // ── DRAW FRAME ──
+  // ── RAW SPRITE DRAW (no layers) ──
   function drawFrameTo(idx, ctx, dw, dh) {
     if (!state.img) return;
     const { sx, sy, sw, sh } = getRect(idx);
@@ -69,20 +75,20 @@ const Renderer = (() => {
     }
   }
 
-  // ── POSITION ──
+  // ── POSITION CANVASES ──
   function positionCanvases() {
     if (!state.img) return;
     const fi           = state.getCurrentFrameIndex();
     const { w: fw, h: fh } = getDrawSize(fi);
-    const dw           = fw * state.zoom;
-    const dh           = fh * state.zoom;
+    const dw           = Math.round(fw * state.zoom);
+    const dh           = Math.round(fh * state.zoom);
     const pan          = state.panOffset || { x: 0, y: 0 };
 
     const slotA = document.getElementById('slot-a');
-    const sW    = slotA.offsetWidth  || 600;
-    const sH    = slotA.offsetHeight || 400;
-    const cx    = sW / 2 - dw / 2 + pan.x;
-    const cy    = sH / 2 - dh / 2 + pan.y;
+    const sW    = slotA.clientWidth  || 600;
+    const sH    = slotA.clientHeight || 400;
+    const cx    = Math.round(sW / 2 - dw / 2 + pan.x);
+    const cy    = Math.round(sH / 2 - dh / 2 + pan.y);
 
     const abs = 'position:absolute;image-rendering:pixelated;image-rendering:crisp-edges;';
     const pos = `left:${cx}px;top:${cy}px;`;
@@ -91,7 +97,7 @@ const Renderer = (() => {
     cvO.width = fw; cvO.height = fh;
     cvG.width = dw; cvG.height = dh;
 
-    const showGrid = document.getElementById('sgrid').checked;
+    const showGrid = document.getElementById('sgrid')?.checked;
     cvP.style.cssText = `${abs}${pos}width:${dw}px;height:${dh}px;display:block`;
     cvO.style.cssText = `${abs}${pos}width:${dw}px;height:${dh}px;`;
     cvG.style.cssText = `${abs}${pos}pointer-events:none;display:${showGrid ? 'block' : 'none'}`;
@@ -100,19 +106,18 @@ const Renderer = (() => {
     bg.style.cssText = `position:absolute;${pos}width:${dw}px;height:${dh}px;display:block;box-shadow:0 0 0 1px var(--border),0 6px 30px rgba(0,0,0,.5);`;
     applyBg(bg);
 
-    // Slot B
+    // Slot B (compare)
     if (state.compareMode) {
       const bFi            = state.getCompareFrameIndex();
       const { w: bfw, h: bfh } = getDrawSize(bFi);
-      const bdw            = bfw * state.zoom;
-      const bdh            = bfh * state.zoom;
+      const bdw = Math.round(bfw * state.zoom);
+      const bdh = Math.round(bfh * state.zoom);
       cvPB.width = bfw; cvPB.height = bfh;
       const slotB = document.getElementById('slot-b');
-      const bW    = slotB.offsetWidth  || 600;
-      const bH    = slotB.offsetHeight || 400;
-      // Slot B shares pan offset
-      const bcx   = bW / 2 - bdw / 2 + pan.x;
-      const bcy   = bH / 2 - bdh / 2 + pan.y;
+      const bW    = slotB.clientWidth  || 600;
+      const bH    = slotB.clientHeight || 400;
+      const bcx   = Math.round(bW / 2 - bdw / 2 + pan.x);
+      const bcy   = Math.round(bH / 2 - bdh / 2 + pan.y);
       cvPB.style.cssText = `${abs}left:${bcx}px;top:${bcy}px;width:${bdw}px;height:${bdh}px;display:block`;
       const bgB = document.getElementById('cbg-b');
       bgB.style.cssText  = `position:absolute;left:${bcx}px;top:${bcy}px;width:${bdw}px;height:${bdh}px;box-shadow:0 0 0 1px var(--border);`;
@@ -126,38 +131,33 @@ const Renderer = (() => {
     positionCanvases();
     const fi           = state.getCurrentFrameIndex();
     const { w: fw, h: fh } = getDrawSize(fi);
-    // ── Draw: under layers → sprite → over layers ──
-    ctxP.clearRect(0, 0, fw, fh);
-    // Under assets (zIndex < 0)
-    if (typeof Assets !== 'undefined' && Assets.layers.length)
-      Assets.drawLayers(ctxP, fw, fh, fi, 'under');
-    // Sprite
-    const { sx, sy, sw, sh } = getRect(fi);
-    ctxP.imageSmoothingEnabled = false;
-    ctxP.drawImage(state.img, sx, sy, sw, sh, 0, 0, fw, fh);
-    // Over assets (zIndex > 0)
-    if (typeof Assets !== 'undefined' && Assets.layers.length)
-      Assets.drawLayers(ctxP, fw, fh, fi, 'over');
+
+    // Draw all layers (Assets handles sprite + asset layers in order)
+    if (typeof Assets !== 'undefined') {
+      Assets.drawAll(ctxP, fw, fh, fi);
+    } else {
+      drawFrameTo(fi, ctxP, fw, fh);
+    }
 
     renderOnion();
     renderGrid();
+
     if (state.compareMode) {
       const bFi            = state.getCompareFrameIndex();
       const { w: bfw, h: bfh } = getDrawSize(bFi);
       drawFrameTo(bFi, ctxPB, bfw, bfh);
     }
-    if (document.getElementById('fs-overlay').classList.contains('show')) renderFullscreen();
-    // Keep rulers in sync
-    if (typeof Rulers !== 'undefined' && Rulers.enabled) Rulers.redraw();
-    // Keep sheet viewer in sync if open
+
+    if (document.getElementById('fs-overlay')?.classList.contains('show')) renderFullscreen();
+    if (typeof Rulers    !== 'undefined' && Rulers.enabled)   Rulers.redraw();
     if (typeof Placement !== 'undefined') Placement.renderSheetViewer();
   }
 
   // ── ONION ──
   function renderOnion() {
     if (!state.img) return;
-    const show    = document.getElementById('sonion').checked;
-    const opacity = parseInt(document.getElementById('oop').value) / 100;
+    const show    = document.getElementById('sonion')?.checked;
+    const opacity = parseInt(document.getElementById('oop')?.value || 25) / 100;
     document.getElementById('oopv').textContent = Math.round(opacity * 100) + '%';
     cvO.style.display = show ? 'block' : 'none';
     cvO.style.opacity = opacity;
@@ -172,29 +172,24 @@ const Renderer = (() => {
   // ── GRID ──
   function renderGrid() {
     if (!state.img) return;
-    const show = document.getElementById('sgrid').checked;
+    const show = document.getElementById('sgrid')?.checked;
     cvG.style.display = show ? 'block' : 'none';
     if (!show) return;
 
     const z = state.zoom;
-    // Don't draw if pixels would be too small to see individual cells
+    ctxG.clearRect(0, 0, cvG.width, cvG.height);
+
     if (z < 2) {
-      // At very low zoom just show a subtle border
-      ctxG.clearRect(0, 0, cvG.width, cvG.height);
       ctxG.strokeStyle = 'rgba(124,92,252,0.6)';
       ctxG.lineWidth   = 1;
       ctxG.strokeRect(0.5, 0.5, cvG.width - 1, cvG.height - 1);
       return;
     }
 
-    ctxG.clearRect(0, 0, cvG.width, cvG.height);
-
-    // Adaptive opacity: more transparent at low zoom, more visible at high zoom
     const opacity = Math.min(0.6, 0.15 + (z - 2) * 0.06);
     ctxG.strokeStyle = `rgba(124,92,252,${opacity})`;
     ctxG.lineWidth   = 1;
 
-    // Draw lines snapped to half-pixel for crispness
     for (let x = 0; x <= cvG.width; x += z) {
       const px = Math.round(x) + 0.5;
       ctxG.beginPath(); ctxG.moveTo(px, 0); ctxG.lineTo(px, cvG.height); ctxG.stroke();
@@ -204,16 +199,13 @@ const Renderer = (() => {
       ctxG.beginPath(); ctxG.moveTo(0, py); ctxG.lineTo(cvG.width, py); ctxG.stroke();
     }
 
-    // At high zoom: show pixel coordinates every 4 pixels
-    if (z >= 8) {
-      ctxG.fillStyle = `rgba(124,92,252,${Math.min(0.7, opacity + 0.1)})`;
-      ctxG.font      = `${Math.min(z * 0.4, 10)}px monospace`;
-      const step     = z >= 16 ? 1 : (z >= 8 ? 2 : 4);
-      const fw       = state.sprW, fh = state.sprH;
-      for (let py = 0; py < fh; py += step) {
-        for (let px = 0; px < fw; px += step) {
-          if (px === 0 || py === 0) continue;
-          if (z >= 16) ctxG.fillText(`${px},${py}`, px * z + 2, py * z - 2);
+    if (z >= 16) {
+      ctxG.fillStyle = `rgba(124,92,252,${Math.min(0.5, opacity)})`;
+      ctxG.font      = `${Math.min(z * 0.35, 9)}px monospace`;
+      const fw = state.sprW, fh = state.sprH;
+      for (let py = 1; py < fh; py++) {
+        for (let px = 1; px < fw; px++) {
+          ctxG.fillText(`${px},${py}`, px * z + 2, py * z - 2);
         }
       }
     }
@@ -227,30 +219,38 @@ const Renderer = (() => {
     const scale    = Math.min(window.innerWidth / fw, window.innerHeight / fh, 8);
     cvFS.width     = Math.round(fw * scale);
     cvFS.height    = Math.round(fh * scale);
-    ctxFS.imageSmoothingEnabled = false;
-    drawFrameTo(fi, ctxFS, cvFS.width, cvFS.height);
+    if (typeof Assets !== 'undefined') {
+      Assets.drawAll(ctxFS, cvFS.width, cvFS.height, fi);
+    } else {
+      drawFrameTo(fi, ctxFS, cvFS.width, cvFS.height);
+    }
   }
 
   // ── THUMBNAIL ──
   function buildStripThumb(fi, size) {
     const cv  = document.createElement('canvas');
-    cv.width  = state.sprW;
-    cv.height = state.sprH;
-    const sc  = Math.min(size / state.sprW, size / state.sprH);
-    cv.style.width  = Math.round(state.sprW * sc) + 'px';
-    cv.style.height = Math.round(state.sprH * sc) + 'px';
-    drawFrameTo(fi, cv.getContext('2d'), state.sprW, state.sprH);
+    const { w: sw, h: sh } = getDrawSize(fi);
+    cv.width  = sw; cv.height = sh;
+    const sc  = Math.min(size / sw, size / sh);
+    cv.style.width  = Math.round(sw * sc) + 'px';
+    cv.style.height = Math.round(sh * sc) + 'px';
+    drawFrameTo(fi, cv.getContext('2d'), sw, sh);
     return cv;
   }
 
-  // ── EXPORT HELPERS ──
+  // ── EXPORT FRAME (with all layers) ──
   function getFrameCanvas(fi, scale) {
     const { sw, sh } = getRect(fi);
+    const W = Math.round(sw * scale), H = Math.round(sh * scale);
     const cv  = document.createElement('canvas');
-    cv.width  = sw * scale; cv.height = sh * scale;
+    cv.width  = W; cv.height = H;
     const ctx = cv.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    drawFrameTo(fi, ctx, cv.width, cv.height);
+    if (typeof Assets !== 'undefined') {
+      Assets.drawAll(ctx, W, H, fi);
+    } else {
+      ctx.imageSmoothingEnabled = false;
+      drawFrameTo(fi, ctx, W, H);
+    }
     return cv;
   }
 

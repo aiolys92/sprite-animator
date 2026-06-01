@@ -73,15 +73,7 @@ const App = (() => {
     document.getElementById('zvl').textContent   = state.zoom + '×';
     document.getElementById('gscalev').textContent = state.gifScale + '×';
 
-    // Wheel zoom
-    document.getElementById('canvas-wrap').addEventListener('wheel', e => {
-      e.preventDefault();
-      let v = parseFloat(document.getElementById('zoom').value) + (e.deltaY < 0 ? 0.5 : -0.5);
-      v = Math.max(0.5, Math.min(12, v));
-      document.getElementById('zoom').value = v;
-      updateZoom();
-    }, { passive: false });
-
+    // Wheel zoom removed
     // Drag & drop
     const wrap = document.getElementById('canvas-wrap');
     wrap.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('drag-over'); });
@@ -553,11 +545,11 @@ const App = (() => {
     },
 
     // Assets
-    handleAssetInput(e, above) {
+    handleAssetInput(e) {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = ev => Assets.addLayer(ev.target.result, file.name.replace(/\.[^.]+$/, ''), above);
+      reader.onload = ev => Assets.addLayer(ev.target.result, file.name.replace(/\.[^\.]+$/, ''));
       reader.readAsDataURL(file);
       e.target.value = '';
     },
@@ -571,4 +563,4 @@ const App = (() => {
 })();
 
 // ── BOOT ──
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => { App.init(); window.state = App.state; });
