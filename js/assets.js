@@ -205,8 +205,10 @@ const Assets = (() => {
     const { w: fw, h: fh } = Renderer.getDrawSize(fi);
     const dw      = fw * state.zoom;
     const dh      = fh * state.zoom;
-    const originX = slotA.clientWidth  / 2 - dw / 2 + pan.x;
-    const originY = slotA.clientHeight / 2 - dh / 2 + pan.y;
+    const sW      = rect.width  || slotA.offsetWidth  || 600;
+    const sH      = rect.height || slotA.offsetHeight || 400;
+    const originX = sW / 2 - dw / 2 + pan.x;
+    const originY = sH / 2 - dh / 2 + pan.y;
     // canvas pixel coords
     const cpx = (sx - originX) / state.zoom;
     const cpy = (sy - originY) / state.zoom;
@@ -245,8 +247,10 @@ const Assets = (() => {
     const { w: fw, h: fh } = Renderer.getDrawSize(fi);
     const dw      = fw * state.zoom;
     const dh      = fh * state.zoom;
-    const originX = slotA.clientWidth  / 2 - dw / 2 + pan.x;
-    const originY = slotA.clientHeight / 2 - dh / 2 + pan.y;
+    const sW      = rect.width  || slotA.offsetWidth  || 600;
+    const sH      = rect.height || slotA.offsetHeight || 400;
+    const originX = sW / 2 - dw / 2 + pan.x;
+    const originY = sH / 2 - dh / 2 + pan.y;
     const cpx = spX * fw / (state.sprW || fw);
     const cpy = spY * fh / (state.sprH || fh);
     return {

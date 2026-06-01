@@ -83,8 +83,10 @@ const Renderer = (() => {
     const pan          = state.panOffset || { x: 0, y: 0 };
 
     const slotA = document.getElementById('slot-a');
-    const sW    = slotA.clientWidth  || 600;
-    const sH    = slotA.clientHeight || 400;
+    // Use getBoundingClientRect for reliable dimensions
+    const rect  = slotA.getBoundingClientRect();
+    const sW    = rect.width  || slotA.offsetWidth  || 600;
+    const sH    = rect.height || slotA.offsetHeight || 400;
     const cx    = Math.round(sW / 2 - dw / 2 + pan.x);
     const cy    = Math.round(sH / 2 - dh / 2 + pan.y);
 

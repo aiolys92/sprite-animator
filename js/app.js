@@ -203,6 +203,10 @@ const App = (() => {
       document.getElementById('smsg').className    = 's-ok';
       ExportMenu.setEnabled(true);
       updateGridInternal();
+      // Deferred render: wait for layout to settle before positioning canvases
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        updateGridInternal();
+      }));
       toast('Sprite sheet chargée !', 'ok');
     };
     img.src = dataUrl;
