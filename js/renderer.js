@@ -121,8 +121,8 @@ const Renderer = (() => {
 
     renderOnion();
     renderGrid();
-    // Draw selection handles on selected asset
-    if (typeof Assets !== 'undefined') drawSelectionOverlay();
+    // Draw selection overlay
+    if (typeof Assets !== 'undefined') Assets.drawOverlay();
     if (document.getElementById('fs-overlay')?.classList.contains('show')) renderFullscreen();
     if (typeof Rulers    !== 'undefined' && Rulers.enabled)   Rulers.redraw();
     if (typeof Placement !== 'undefined') Placement.renderSheetViewer();
@@ -227,72 +227,6 @@ const Renderer = (() => {
       drawFrameTo(fi, ctx, W, H);
     }
     return cv;
-  }
-
-  // ── SELECTION OVERLAY ──
-  function drawSelectionOverlay() {
-    const selId = Assets.selectedId;
-    if (selId === null || selId === Assets.SPRITE_ID) return;
-    const layer = Assets.layers.find(l => l.id === selId);
-    if (!layer || layer.type !== 'asset' || !layer.img) return;
-    const fi  = state.getCurrentFrameIndex();
-    const p   = Assets.effectiveProps ? null : null; // use ep via drawAll
-    // Get effective props by reading frameProps + layer
-    const fp   = (Assets.frameProps[selId] || {})[fi] || {};
-    const lp   = layer;
-    const ex   = fp.x   !== undefined ? fp.x   : lp.x;
-    const ey   = fp.y   !== undefined ? fp.y   : lp.y;
-    const esc  = fp.scale !== undefined ? fp.scale : lp.scale;
-    const escX = fp.scaleX !== undefined ? fp.scaleX : lp.scaleX;
-    const escY = fp.scaleY !== undefined ? fp.scaleY : lp.scaleY;
-    const vis  = lp.mode === 'frame' ? !!(lp.frameEnabled[fi]) : (fp.visible !== undefined ? fp.visible : lp.visible);
-    if (!vis) return;
-
-    const { w: fw, h: fh } = getDrawSize(fi);
-    const scX = fw / (state.sprW || fw);
-    const scY = fh / (state.sprH || fh);
-    const aw  = layer.img.naturalWidth  * esc * escX * scX * state.zoom;
-    const ah  = layer.img.naturalHeight * esc * escY * scY * state.zoom;
-    const pan = state.panOffset || { x: 0, y: 0 };
-    const dw  = fw * state.zoom;
-    const dh  = fh * state.zoom;
-    const slotA  = document.getElementById('slot-a');
-    const originX = slotA.clientWidth  / 2 - dw / 2 + pan.x;
-    const originY = slotA.clientHeight / 2 - dh / 2 + pan.y;
-    const screenX = originX + ex * scX * state.zoom;
-    const screenY = originY + ey * scY * state.zoom;
-
-    // Draw on a temporary overlay canvas (reuse cvG temporarily, or use a dedicated one)
-    const ov = document.getElementById('c-overlay');
-    if (!ov) return;
-    const octx = ov.getContext('2d');
-    ov.width  = slotA.clientWidth;
-    ov.height = slotA.clientHeight;
-    ov.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:12;';
-    octx.clearRect(0, 0, ov.width, ov.height);
-
-    const pad = 3;
-    octx.strokeStyle = 'rgba(252,92,124,0.9)';
-    octx.lineWidth   = 1.5;
-    octx.setLineDash([4, 3]);
-    octx.strokeRect(screenX - pad, screenY - pad, aw + pad * 2, ah + pad * 2);
-    octx.setLineDash([]);
-
-    // Corner handles
-    const hs = 6;
-    octx.fillStyle = '#fff';
-    octx.strokeStyle = 'rgba(252,92,124,0.9)';
-    octx.lineWidth = 1.5;
-    [[screenX - pad, screenY - pad],[screenX + aw + pad, screenY - pad],
-     [screenX - pad, screenY + ah + pad],[screenX + aw + pad, screenY + ah + pad]].forEach(([hx, hy]) => {
-      octx.fillRect(hx - hs/2, hy - hs/2, hs, hs);
-      octx.strokeRect(hx - hs/2, hy - hs/2, hs, hs);
-    });
-
-    // Label
-    octx.fillStyle   = 'rgba(252,92,124,0.9)';
-    octx.font        = '10px monospace';
-    octx.fillText(layer.name + ` (${Math.round(ex)},${Math.round(ey)})`, screenX, screenY - pad - 4);
   }
 
   return {
